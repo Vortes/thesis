@@ -1,0 +1,112 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" 
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  first_name String
+  last_name  String
+  
+  latitude  Float?   
+  longitude Float?
+
+  // Relationships
+  sentShipments     Shipment[] @relation("Sender")
+  receivedShipments Shipment[] @relation("Recipient")
+  
+  // A user can be part of many connections
+  connectionsAsInitiator Connection[] @relation("Initiator")
+  connectionsAsReceiver  Connection[] @relation("Receiver")
+}
+
+model Connection {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  
+  initiatorId String
+  initiator   User   @relation("Initiator", fields: [initiatorId], references: [id])
+  
+  recipientId String
+  recipient   User   @relation("Receiver", fields: [recipientId], references: [id])
+  
+  status      ConnectionStatus @default(PENDING)
+
+  // The Virtual Messenger belongs to the RELATIONSHIP
+  messenger   Messenger? 
+  
+  @@unique([initiatorId, recipientId]) // Prevent duplicate friendships
+}
+
+model Messenger {
+  id           String     @id @default(cuid())
+  name         String     // e.g., "Hermes" or "Rizzo"
+  connectionId String     @unique
+  connection   Connection @relation(fields: [connectionId], references: [id])
+  
+  // Visual Customization (for your 3D/Frontend assets)
+  // Store the ID of the 3D model/skin here
+  skinId       String     @default("default_messenger") 
+  
+  // State: Is the messenger busy?
+  isBusy       Boolean    @default(false)
+}
+
+model Shipment {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  
+  // Who and Where
+  senderId    String
+  sender      User     @relation("Sender", fields: [senderId], references: [id])
+  recipientId String
+  recipient   User     @relation("Recipient", fields: [recipientId], references: [id])
+  
+  // The Payload
+  items       GiftItem[]
+  
+  // The Journey Logic
+  status          ShipmentStatus @default(DRAFTING)
+  dispatchedAt    DateTime?      // When the user hit "Send"
+  arrivalEstimate DateTime?      // Calculated: dispatchedAt + travel_time
+  
+  // Metadata for the journey visualization
+  distanceInKm    Float?
+}
+
+model GiftItem {
+  id         String   @id @default(cuid())
+  shipmentId String
+  shipment   Shipment @relation(fields: [shipmentId], references: [id])
+  
+  type       GiftType // TEXT, AUDIO, DRAWING
+  
+  // For text, store here. For Audio/Drawing, store S3/R2 URL here.
+  content    String   @db.Text 
+}
+
+// Enums
+enum ConnectionStatus {
+  PENDING
+  ACTIVE
+  BLOCKED
+}
+
+enum ShipmentStatus {
+  DRAFTING    // User is still adding items
+  IN_TRANSIT  // Messenger is "walking"
+  DELIVERED   // Ready to be opened
+  OPENED      // User has viewed it
+}
+
+enum GiftType {
+  TEXT
+  AUDIO
+  DRAWING
+}
