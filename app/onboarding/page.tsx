@@ -7,13 +7,16 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { MapPin, Mail, CheckCircle2 } from "lucide-react"
+import { MapPin, Mail, CheckCircle2, Loader2 } from "lucide-react"
+import { useMutation } from "@tanstack/react-query"
+import { useRouter } from "next/navigation"
 
 export default function OnboardingPage() {
   const [step, setStep] = useState(1)
   const [progress, setProgress] = useState(33)
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false)
   const [email, setEmail] = useState("")
+  const router = useRouter()
 
   const handleLocationRequest = () => {
     setIsLocationDialogOpen(true)
@@ -37,12 +40,32 @@ export default function OnboardingPage() {
     )
   }
 
+  const inviteMutation = useMutation({
+    mutationFn: async (email: string) => {
+      const res = await fetch("/api/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(text || "Failed to send invite")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      setStep(3)
+      setProgress(100)
+    },
+    onError: (error) => {
+      console.error("Invite error:", error)
+      alert("Failed to send invite: " + error.message)
+    },
+  })
+
   const handleInviteSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    // Simulate invite sending
-    console.log("Invite sent to:", email)
-    setStep(3)
-    setProgress(100)
+    inviteMutation.mutate(email)
   }
 
   return (
@@ -112,13 +135,21 @@ export default function OnboardingPage() {
                       required 
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      disabled={inviteMutation.isPending}
                     />
                   </div>
                 </form>
               </CardContent>
               <CardFooter>
-                <Button type="submit" form="invite-form" className="w-full">
-                  Send Invite
+                <Button type="submit" form="invite-form" className="w-full" disabled={inviteMutation.isPending}>
+                  {inviteMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    "Send Invite"
+                  )}
                 </Button>
               </CardFooter>
             </>
@@ -142,7 +173,7 @@ export default function OnboardingPage() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button className="w-full" onClick={() => console.log("Go to dashboard")}>
+                <Button className="w-full" onClick={() => router.push("/dashboard")}>
                   Go to Dashboard
                 </Button>
               </CardFooter>
