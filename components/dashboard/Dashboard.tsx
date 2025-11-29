@@ -40,16 +40,10 @@ export default function Dashboard() {
 
   const handleComposeSend = () => {
       setIsSealed(true);
-      setTimeout(() => {
-          setComposeMessage('');
-          setAttachedItems([]);
-          setIsSealed(false);
-          setCurrentView('dashboard');
-      }, 2500);
   };
 
   return (
-    <div className="min-h-screen bg-slate-800 flex items-center justify-center p-4 relative overflow-hidden font-sans select-none">
+    <div className="h-screen w-screen bg-slate-800 relative overflow-hidden font-sans select-none">
       
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-10" 
@@ -61,7 +55,7 @@ export default function Dashboard() {
       {activeTool === 'drawing' && <DrawingPad onSave={(i)=>{setAttachedItems([...attachedItems, i]); setActiveTool(null)}} onCancel={()=>setActiveTool(null)} />}
 
       {/* --- MAIN CONTAINER --- */}
-      <div className="relative z-10 w-full max-w-5xl h-[85vh] flex flex-col md:flex-row bg-pixel-bg p-2 pixel-border pixel-corners gap-2">
+      <div className="relative z-10 w-full h-full flex flex-col md:flex-row bg-pixel-bg p-0 pixel-border pixel-corners gap-0">
         
         {/* --- LEFT SIDEBAR (Navigation & Roster) --- */}
         <Sidebar 
@@ -99,6 +93,7 @@ export default function Dashboard() {
                     attachedItems={attachedItems} 
                     setAttachedItems={setAttachedItems} 
                     isSealed={isSealed} 
+                    setIsSealed={setIsSealed}
                     handleComposeSend={handleComposeSend} 
                     composeMessage={composeMessage} 
                     setComposeMessage={setComposeMessage} 

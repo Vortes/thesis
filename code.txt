@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Gift, MapPin, Music, Coffee, Star, X, Mic, Link as LinkIcon, Image as ImageIcon, PenTool, Play, Square, Save, RotateCcw, Eraser, LayoutDashboard, Mail, Globe, User, Plus, History, ArrowLeft, AlertCircle, Clock, Calendar } from 'lucide-react';
+import { Send, Gift, MapPin, Music, Coffee, Star, X, Mic, Link as LinkIcon, Image as ImageIcon, PenTool, Play, Square, Save, RotateCcw, Eraser } from 'lucide-react';
 
-// --- STYLES & FONTS ---
+// Using a standard pixel font from Google Fonts
 const fonts = (
   <style>
     {`
@@ -25,94 +25,54 @@ const fonts = (
           0 -2px 0 0 black,
           0 2px 0 0 black;
       }
-      
-      .pixel-corners {
-         clip-path: polygon(
-          0px 4px, 4px 4px, 4px 0px,
-          calc(100% - 4px) 0px, calc(100% - 4px) 4px, 100% 4px,
-          100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%,
-          4px 100%, 4px calc(100% - 4px), 0px calc(100% - 4px)
-        );
+
+      /* Custom scrollbar for that retro feel */
+      ::-webkit-scrollbar {
+        width: 12px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #e0d5c1; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #8b7355; 
+        border: 2px solid #e0d5c1;
       }
 
-      /* Custom scrollbar */
-      ::-webkit-scrollbar { width: 8px; }
-      ::-webkit-scrollbar-track { background: #e0d5c1; }
-      ::-webkit-scrollbar-thumb { background: #8b7355; border: 2px solid #e0d5c1; }
-
-      /* Animations */
       @keyframes float {
         0% { transform: translateY(0px); }
-        50% { transform: translateY(-5px); }
+        50% { transform: translateY(-10px); }
         100% { transform: translateY(0px); }
       }
-      .animate-float { animation: float 3s ease-in-out infinite; }
       
-      @keyframes pulse-ring {
-        0% { transform: scale(0.8); opacity: 0.5; }
-        100% { transform: scale(2); opacity: 0; }
+      .animate-float {
+        animation: float 3s ease-in-out infinite;
       }
-      .animate-pulse-ring { animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
 
-      @keyframes bounce-sm {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-4px); }
+      @keyframes spin-tape {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
       }
-      .animate-bounce-sm { animation: bounce-sm 1s infinite; }
+      .animate-spin-slow {
+        animation: spin-tape 2s linear infinite;
+      }
+
+      .scanline {
+        background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
+        background-size: 100% 4px;
+      }
       
-      .map-pattern {
-        background-color: #e5e7eb;
+      .checkered-bg {
         background-image: 
-          linear-gradient(#fff 2px, transparent 2px),
-          linear-gradient(90deg, #fff 2px, transparent 2px);
-        background-size: 40px 40px;
+          linear-gradient(45deg, #eee 25%, transparent 25%), 
+          linear-gradient(-45deg, #eee 25%, transparent 25%), 
+          linear-gradient(45deg, transparent 75%, #eee 75%), 
+          linear-gradient(-45deg, transparent 75%, #eee 75%);
+        background-size: 20px 20px;
+        background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
       }
     `}
   </style>
 );
-
-// --- MOCK DATA ---
-const CHARACTERS = [
-  { 
-    id: 2, 
-    name: 'Fuzz', 
-    status: 'Ready', // At Home, Ready for Quest
-    destination: 'Home Base', 
-    progress: 0, 
-    color: '#fca5a5', 
-    coords: { x: 25, y: 60 },
-    history: [
-      { id: 101, date: 'Oct 12', to: 'Sarah', location: 'Paris', items: ['Photo', 'Croissant'] },
-      { id: 102, date: 'Sep 05', to: 'Mom', location: 'Home', items: ['Voice Memo'] },
-    ]
-  },
-  { 
-    id: 1, 
-    name: 'Sprout', 
-    status: 'En Route', 
-    destination: 'Tokyo', 
-    progress: 65, 
-    color: '#a3e635', 
-    coords: { x: 60, y: 40 },
-    history: [
-      { id: 201, date: 'Nov 01', to: 'Kenji', location: 'Tokyo', items: ['Link', 'Drawing'] },
-    ]
-  },
-  { 
-    id: 3, 
-    name: 'Glip', 
-    status: 'Delivered', 
-    destination: 'London', 
-    progress: 100, 
-    color: '#60a5fa', 
-    coords: { x: 45, y: 30 },
-    history: [
-      { id: 301, date: 'Nov 28', to: 'James', location: 'London', items: ['Raindrop', 'Tea'] },
-      { id: 302, date: 'Oct 30', to: 'James', location: 'London', items: ['Drawing'] },
-      { id: 303, date: 'Sep 15', to: 'Anna', location: 'Berlin', items: ['Techno Beat'] },
-    ]
-  },
-];
 
 const TOOLS = [
   { id: 'voice', name: 'Voice Memo', icon: <Mic />, type: 'audio', desc: 'Record audio' },
@@ -121,517 +81,536 @@ const TOOLS = [
   { id: 'drawing', name: 'Drawing', icon: <PenTool />, type: 'art', desc: 'Sketch pad' },
 ];
 
-// --- SUB-COMPONENTS ---
-
-// (Re-using existing VoiceRecorder and DrawingPad components from previous turn)
+// --- Sub-Component: Retro Voice Recorder ---
 const VoiceRecorder = ({ onSave, onCancel }) => {
-    const [isRecording, setIsRecording] = useState(false);
-    const [duration, setDuration] = useState(0);
-    const [hasRecording, setHasRecording] = useState(false);
-    const timerRef = useRef(null);
-    const formatTime = (seconds) => {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    };
-    const handleToggleRecord = () => {
-        if (isRecording) { clearInterval(timerRef.current); setIsRecording(false); setHasRecording(true); } 
-        else { setDuration(0); setHasRecording(false); setIsRecording(true); timerRef.current = setInterval(() => setDuration(p => p + 1), 1000); }
-    };
-    const handleSave = () => onSave({ id: Date.now(), type: 'voice', name: 'Tape Recording', icon: <Mic />, detail: formatTime(duration) });
-    useEffect(() => () => clearInterval(timerRef.current), []);
+  const [isRecording, setIsRecording] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [hasRecording, setHasRecording] = useState(false);
+  const timerRef = useRef(null);
 
-    return (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-[#2d2d2d] p-1 pixel-border w-full max-w-sm relative">
-                <button onClick={onCancel} className="absolute -top-3 -right-3 bg-red-500 text-white p-1 pixel-border-sm hover:bg-red-600 z-10"><X size={16} /></button>
-                <div className="bg-[#e5e5e5] p-4 flex flex-col items-center gap-4 border-4 border-gray-700">
-                     <div className="w-full bg-[#333] h-24 rounded-lg flex items-center justify-center gap-4 px-4 pixel-border-sm">
-                        <div className={`w-8 h-8 rounded-full border-2 border-white border-dashed ${isRecording ? 'animate-spin' : ''}`}></div>
-                        <div className="flex-1 h-4 bg-white/20"></div>
-                        <div className={`w-8 h-8 rounded-full border-2 border-white border-dashed ${isRecording ? 'animate-spin' : ''}`}></div>
-                     </div>
-                     <div className="w-full bg-[#4a5d4a] p-2 pixel-border-sm font-handheld text-green-300 text-center text-xl flex justify-between">
-                        <span className={isRecording ? 'animate-pulse text-red-400' : ''}>● REC</span>
-                        <span>{formatTime(duration)}</span>
-                     </div>
-                     <div className="flex gap-2 w-full">
-                        {!hasRecording ? (
-                            <button onClick={handleToggleRecord} className="flex-1 bg-red-500 text-white py-2 pixel-border-sm font-pixel text-[8px]">{isRecording ? 'STOP' : 'RECORD'}</button>
-                        ) : (
-                            <>
-                             <button onClick={() => {setHasRecording(false); setDuration(0)}} className="flex-1 bg-gray-300 py-2 pixel-border-sm font-pixel text-[8px]">RETRY</button>
-                             <button onClick={handleSave} className="flex-1 bg-green-500 text-white py-2 pixel-border-sm font-pixel text-[8px]">SAVE</button>
-                            </>
-                        )}
-                     </div>
-                </div>
-            </div>
-        </div>
-    );
-};
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
-const DrawingPad = ({ onSave, onCancel }) => {
-    const canvasRef = useRef(null);
-    const [color, setColor] = useState('#000000');
-    const isDrawing = useRef(false);
-    
-    useEffect(() => {
-        const canvas = canvasRef.current;
-        if(!canvas) return;
-        canvas.width = 300; canvas.height = 300;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,300,300);
-    }, []);
+  const handleToggleRecord = () => {
+    if (isRecording) {
+      clearInterval(timerRef.current);
+      setIsRecording(false);
+      setHasRecording(true);
+    } else {
+      setDuration(0);
+      setHasRecording(false);
+      setIsRecording(true);
+      timerRef.current = setInterval(() => {
+        setDuration(prev => prev + 1);
+      }, 1000);
+    }
+  };
 
-    const start = (e) => { isDrawing.current = true; draw(e); };
-    const stop = () => { isDrawing.current = false; };
-    const draw = (e) => {
-        if(!isDrawing.current) return;
-        const ctx = canvasRef.current.getContext('2d');
-        const rect = canvasRef.current.getBoundingClientRect();
-        const x = (e.clientX || e.touches[0].clientX) - rect.left;
-        const y = (e.clientY || e.touches[0].clientY) - rect.top;
-        ctx.fillStyle = color; ctx.fillRect(x,y,4,4); // Pixel brush
-    };
-    const handleSave = () => onSave({ id: Date.now(), type: 'drawing', name: 'Sketch', icon: <PenTool />, detail: 'Ink' });
+  const handleSave = () => {
+    onSave({
+      id: Date.now(),
+      type: 'voice',
+      name: 'Tape Recording',
+      icon: <Mic />,
+      detail: formatTime(duration)
+    });
+  };
 
-    return (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-[#e0d5c1] p-1 pixel-border w-full max-w-sm relative">
-                <button onClick={onCancel} className="absolute -top-3 -right-3 bg-red-500 text-white p-1 pixel-border-sm hover:bg-red-600 z-10"><X size={16} /></button>
-                <div className="bg-white border-4 border-[#8b7355] p-2">
-                    <canvas ref={canvasRef} className="bg-white w-full h-[300px] cursor-crosshair pixel-border-sm" onMouseDown={start} onMouseMove={draw} onMouseUp={stop} onMouseLeave={stop} onTouchStart={start} onTouchMove={draw} onTouchEnd={stop} />
-                    <div className="flex justify-between mt-2">
-                        <div className="flex gap-1">
-                            {['#000000','#ef4444','#3b82f6'].map(c => <button key={c} onClick={()=>setColor(c)} className="w-6 h-6 border border-black" style={{backgroundColor:c}}/>)}
-                        </div>
-                        <button onClick={handleSave} className="bg-[#a3e635] px-4 py-1 font-pixel text-[8px] pixel-border-sm">ATTACH</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
+  useEffect(() => {
+    return () => clearInterval(timerRef.current);
+  }, []);
 
-// --- MAIN DASHBOARD COMPONENTS ---
-
-const CharacterPin = ({ char, onClick }) => (
-    <div 
-        className="absolute transform -translate-x-1/2 -translate-y-full cursor-pointer group hover:z-50"
-        style={{ left: `${char.coords.x}%`, top: `${char.coords.y}%` }}
-        onClick={() => onClick(char)}
-    >
-        <div className="relative">
-            {/* Quest Marker for Ready Chars */}
-            {char.status === 'Ready' && (
-                <div className="absolute -top-6 left-1/2 -translate-x-1/2 animate-bounce-sm">
-                    <div className="bg-red-500 text-white font-pixel text-[10px] w-4 h-4 flex items-center justify-center pixel-border-sm border-white">!</div>
-                </div>
-            )}
-
-            {/* Status Pulse for En Route */}
-            {char.status === 'En Route' && (
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-white rounded-full animate-pulse-ring -z-10"></div>
-            )}
-            
-            {/* The Character Graphic (Tiny) */}
-            <div className={`w-10 h-10 pixel-border-sm bg-white p-1 relative z-10 transition-transform duration-200 ${char.status === 'Ready' ? 'hover:scale-110' : ''}`}>
-                <div className="w-full h-full" style={{ backgroundColor: char.color }}></div>
-                {/* Tiny eyes */}
-                <div className="absolute top-3 left-2 w-1 h-2 bg-black"></div>
-                <div className="absolute top-3 right-2 w-1 h-2 bg-black"></div>
-            </div>
-            
-            {/* Tooltip Label */}
-            <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-black text-white px-2 py-1 font-pixel text-[8px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 pixel-border-sm">
-                {char.name} ({char.status})
-            </div>
-        </div>
-        {/* Pin Stick */}
-        <div className="w-0.5 h-4 bg-black mx-auto"></div>
-    </div>
-);
-
-const SidebarItem = ({ char, isSelected, onClick }) => {
-    const isReady = char.status === 'Ready';
-    
-    return (
-        <button 
-            onClick={() => onClick(char)}
-            className={`w-full p-3 flex items-center gap-3 text-left pixel-border-sm transition-all group relative overflow-visible
-                ${isSelected 
-                    ? 'bg-[#a3e635] text-black -translate-y-1' 
-                    : isReady ? 'bg-yellow-50 hover:bg-yellow-100' : 'bg-[#fdfbf7] text-gray-700 hover:bg-gray-50'}
-            `}
-        >
-            {/* Avatar */}
-            <div className="w-8 h-8 border-2 border-black shrink-0 relative overflow-hidden" style={{ backgroundColor: char.color }}>
-                <div className="absolute top-2 left-1 w-1 h-2 bg-black"></div>
-                <div className="absolute top-2 right-1 w-1 h-2 bg-black"></div>
-            </div>
-            
-            {/* Info */}
-            <div className="flex flex-col flex-1 min-w-0">
-                <div className="flex justify-between items-center">
-                    <span className="font-pixel text-[10px] truncate">{char.name}</span>
-                    {/* Status Icons */}
-                    {char.status === 'En Route' && <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>}
-                    {char.status === 'Ready' && <AlertCircle size={12} className="text-red-500 animate-bounce-sm" />}
-                </div>
-                <span className="font-handheld text-sm opacity-70 truncate uppercase">
-                    {char.status === 'Ready' ? 'WAITING FOR QUEST' : `${char.status} > ${char.destination}`}
-                </span>
-            </div>
-            
-            {/* Selection Arrow */}
-            {isSelected && (
-                <div className="absolute -right-1 top-1/2 -translate-y-1/2 w-0 h-0 border-t-8 border-t-transparent border-b-8 border-b-transparent border-r-8 border-r-black"></div>
-            )}
+  return (
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="bg-[#2d2d2d] p-1 pixel-border w-full max-w-sm relative shadow-2xl">
+        <button onClick={onCancel} className="absolute -top-3 -right-3 bg-red-500 text-white p-1 pixel-border-sm hover:bg-red-600 z-10">
+          <X size={16} />
         </button>
-    );
+
+        <div className="bg-[#e5e5e5] p-4 flex flex-col items-center gap-4 relative overflow-hidden border-4 border-gray-700">
+          <div className="w-full bg-[#333] h-32 rounded-lg relative flex items-center justify-center gap-8 px-8 pixel-border-sm">
+            <div className={`w-12 h-12 rounded-full border-4 border-white border-dashed bg-transparent ${isRecording ? 'animate-spin-slow' : ''}`}></div>
+            <div className="flex-1 h-8 bg-white/20 border-t-2 border-b-2 border-black/30"></div>
+            <div className={`w-12 h-12 rounded-full border-4 border-white border-dashed bg-transparent ${isRecording ? 'animate-spin-slow' : ''}`}></div>
+          </div>
+
+          <div className="font-pixel text-xs text-black uppercase tracking-widest bg-yellow-200 px-2 py-1 rotate-1 border border-black/20 shadow-sm">
+            Mixtape Vol. 1
+          </div>
+
+          <div className="w-full bg-[#4a5d4a] p-2 pixel-border-sm font-digital text-green-300 font-mono text-center text-xl shadow-inner flex justify-between items-center">
+            <span className={`${isRecording ? 'animate-pulse text-red-400' : 'text-green-900/50'}`}>● REC</span>
+            <span>{formatTime(duration)}</span>
+          </div>
+
+          <div className="flex gap-4 w-full justify-center pt-2">
+            {!hasRecording ? (
+              <button 
+                onClick={handleToggleRecord}
+                className={`flex-1 py-4 flex flex-col items-center gap-2 pixel-border-sm transition-all active:translate-y-1 ${isRecording ? 'bg-red-100' : 'bg-red-500 hover:bg-red-600 text-white'}`}
+              >
+                {isRecording ? <Square fill="currentColor" /> : <div className="w-4 h-4 rounded-full bg-white"></div>}
+                <span className="font-pixel text-[8px]">{isRecording ? 'STOP' : 'RECORD'}</span>
+              </button>
+            ) : (
+              <div className="flex gap-2 w-full">
+                <button 
+                   onClick={() => { setHasRecording(false); setDuration(0); }}
+                   className="flex-1 bg-gray-300 py-3 flex flex-col items-center justify-center pixel-border-sm hover:bg-gray-400 active:translate-y-1"
+                >
+                   <span className="font-pixel text-[8px] text-gray-700">RETRY</span>
+                </button>
+                <button 
+                   onClick={handleSave}
+                   className="flex-[2] bg-green-500 text-white py-3 flex flex-col items-center justify-center pixel-border-sm hover:bg-green-600 active:translate-y-1"
+                >
+                   <Save size={16} className="mb-1" />
+                   <span className="font-pixel text-[8px]">SAVE TAPE</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- Sub-Component: Retro Drawing Pad ---
+const DrawingPad = ({ onSave, onCancel }) => {
+  const canvasRef = useRef(null);
+  const [color, setColor] = useState('#000000');
+  const [lineWidth, setLineWidth] = useState(3);
+  const isDrawing = useRef(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    // Set canvas size to parent size roughly
+    canvas.width = 300;
+    canvas.height = 300;
+    
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw grid lines for graph paper effect
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for(let i=0; i<=300; i+=20) {
+      ctx.moveTo(i, 0); ctx.lineTo(i, 300);
+      ctx.moveTo(0, i); ctx.lineTo(300, i);
+    }
+    ctx.stroke();
+  }, []);
+
+  const startDrawing = (e) => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX || e.touches[0].clientX) - rect.left;
+    const y = (e.clientY || e.touches[0].clientY) - rect.top;
+
+    isDrawing.current = true;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineWidth = lineWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = color;
+  };
+
+  const draw = (e) => {
+    if (!isDrawing.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX || e.touches[0].clientX) - rect.left;
+    const y = (e.clientY || e.touches[0].clientY) - rect.top;
+
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const stopDrawing = () => {
+    isDrawing.current = false;
+  };
+
+  const clearCanvas = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Redraw grid
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for(let i=0; i<=300; i+=20) {
+      ctx.moveTo(i, 0); ctx.lineTo(i, 300);
+      ctx.moveTo(0, i); ctx.lineTo(300, i);
+    }
+    ctx.stroke();
+  };
+
+  const handleSave = () => {
+    onSave({
+      id: Date.now(),
+      type: 'drawing',
+      name: 'Hand Sketch',
+      icon: <PenTool />,
+      detail: 'Ink on Paper'
+    });
+  };
+
+  const colors = ['#000000', '#ef4444', '#3b82f6', '#22c55e'];
+
+  return (
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="bg-[#e0d5c1] p-1 pixel-border w-full max-w-sm relative shadow-2xl">
+        <button onClick={onCancel} className="absolute -top-3 -right-3 bg-red-500 text-white p-1 pixel-border-sm hover:bg-red-600 z-10">
+          <X size={16} />
+        </button>
+
+        <div className="border-4 border-[#8b7355] bg-white p-2">
+           {/* Tool Header */}
+           <div className="flex justify-between items-center mb-2 px-1">
+             <span className="font-pixel text-[10px] text-[#8b7355]">POCKET PAINTER</span>
+             <div className="flex gap-1">
+               {colors.map(c => (
+                 <button 
+                   key={c}
+                   onClick={() => { setColor(c); setLineWidth(3); }}
+                   className={`w-4 h-4 border border-black ${color === c && lineWidth !== 20 ? 'ring-2 ring-offset-1 ring-gray-400' : ''}`}
+                   style={{ backgroundColor: c }}
+                 />
+               ))}
+               <button 
+                  onClick={() => { setColor('#ffffff'); setLineWidth(20); }}
+                  className={`ml-2 p-0.5 border border-black bg-gray-100 ${lineWidth === 20 ? 'ring-2 ring-offset-1 ring-gray-400' : ''}`}
+                  title="Eraser"
+               >
+                 <Eraser size={10} className="text-black"/>
+               </button>
+             </div>
+           </div>
+
+           {/* Canvas Area */}
+           <div className="relative pixel-border-sm overflow-hidden touch-none">
+             <canvas 
+               ref={canvasRef}
+               className="bg-white cursor-crosshair w-full h-[300px]"
+               onMouseDown={startDrawing}
+               onMouseMove={draw}
+               onMouseUp={stopDrawing}
+               onMouseLeave={stopDrawing}
+               onTouchStart={startDrawing}
+               onTouchMove={draw}
+               onTouchEnd={stopDrawing}
+             />
+           </div>
+
+           {/* Controls */}
+           <div className="flex gap-2 mt-3">
+             <button 
+               onClick={clearCanvas}
+               className="flex-1 bg-red-100 text-red-800 py-2 font-pixel text-[8px] pixel-border-sm hover:bg-red-200 active:translate-y-1"
+             >
+               CLEAR PAGE
+             </button>
+             <button 
+               onClick={handleSave}
+               className="flex-[2] bg-[#a3e635] text-black py-2 font-pixel text-[8px] pixel-border-sm hover:bg-[#bef264] active:translate-y-1 flex items-center justify-center gap-2"
+             >
+               <Save size={12} />
+               ATTACH SKETCH
+             </button>
+           </div>
+        </div>
+        
+        {/* Binder Rings Detail */}
+        <div className="absolute -left-2 top-10 flex flex-col gap-8">
+            <div className="w-4 h-4 rounded-full bg-gray-400 border border-gray-600 shadow-sm"></div>
+            <div className="w-4 h-4 rounded-full bg-gray-400 border border-gray-600 shadow-sm"></div>
+            <div className="w-4 h-4 rounded-full bg-gray-400 border border-gray-600 shadow-sm"></div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 
 export default function App() {
-  const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard', 'compose', 'history'
-  const [selectedChar, setSelectedChar] = useState(null);
-  const [activeTool, setActiveTool] = useState(null);
-  
-  // Compose State
-  const [composeMessage, setComposeMessage] = useState('');
+  const [message, setMessage] = useState('');
   const [attachedItems, setAttachedItems] = useState([]);
   const [isSealed, setIsSealed] = useState(false);
+  const [view, setView] = useState('compose'); 
+  const [activeTool, setActiveTool] = useState(null); // 'voice', 'link', 'drawing', etc.
 
-  // Sorting: Ready first, then others
-  const sortedChars = [...CHARACTERS].sort((a, b) => {
-      if (a.status === 'Ready' && b.status !== 'Ready') return -1;
-      if (a.status !== 'Ready' && b.status === 'Ready') return 1;
-      return 0;
-  });
-
-  const handleCharClick = (char) => {
-    setSelectedChar(char);
-    if (char.status === 'Ready') {
-        // If ready, go to quest menu (Compose)
-        setCurrentView('compose');
+  const handleToolClick = (toolId) => {
+    if (attachedItems.length >= 3) return; // Max items reached
+    
+    if (toolId === 'voice') {
+      setActiveTool('voice');
+    } else if (toolId === 'drawing') {
+      setActiveTool('drawing');
     } else {
-        // If not ready, just view details
-        // If we are in compose mode and click a non-ready char, we should probably go back to dashboard or history
-        if (currentView === 'compose') setCurrentView('dashboard');
+      // Fallback for other tools
+      const tool = TOOLS.find(t => t.id === toolId);
+      const newItem = {
+        id: Date.now(),
+        type: toolId,
+        name: tool.name,
+        icon: tool.icon,
+        detail: 'Attached'
+      };
+      setAttachedItems([...attachedItems, newItem]);
     }
   };
 
-  const handleComposeSend = () => {
-      setIsSealed(true);
-      setTimeout(() => {
-          setComposeMessage('');
-          setAttachedItems([]);
-          setIsSealed(false);
-          setCurrentView('dashboard');
-      }, 2500);
+  const handleSaveItem = (item) => {
+    setAttachedItems([...attachedItems, item]);
+    setActiveTool(null);
+  };
+
+  const removeItem = (id) => {
+    setAttachedItems(attachedItems.filter(i => i.id !== id));
+  };
+
+  const handleSend = () => {
+    setIsSealed(true);
+    setTimeout(() => {
+      setView('sending');
+      setTimeout(() => setView('sent'), 3000);
+    }, 1500);
   };
 
   return (
     <div className="min-h-screen bg-slate-800 flex items-center justify-center p-4 relative overflow-hidden font-sans select-none">
       {fonts}
       
+      {/* Modals */}
+      {activeTool === 'voice' && (
+        <VoiceRecorder 
+          onSave={handleSaveItem} 
+          onCancel={() => setActiveTool(null)} 
+        />
+      )}
+      {activeTool === 'drawing' && (
+        <DrawingPad
+          onSave={handleSaveItem}
+          onCancel={() => setActiveTool(null)}
+        />
+      )}
+
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-10" 
-           style={{ backgroundImage: 'radial-gradient(#ffffff 2px, transparent 2px)', backgroundSize: '32px 32px' }}>
+           style={{ 
+             backgroundImage: 'radial-gradient(#ffffff 2px, transparent 2px)', 
+             backgroundSize: '32px 32px' 
+           }}>
       </div>
 
-      {/* --- OVERLAYS (Modals) --- */}
-      {activeTool === 'voice' && <VoiceRecorder onSave={(i)=>{setAttachedItems([...attachedItems, i]); setActiveTool(null)}} onCancel={()=>setActiveTool(null)} />}
-      {activeTool === 'drawing' && <DrawingPad onSave={(i)=>{setAttachedItems([...attachedItems, i]); setActiveTool(null)}} onCancel={()=>setActiveTool(null)} />}
-
-      {/* --- MAIN CONTAINER --- */}
-      <div className="relative z-10 w-full max-w-5xl h-[85vh] flex flex-col md:flex-row bg-[#8b7355] p-2 pixel-border pixel-corners gap-2">
+      {/* Main UI Container */}
+      <div className="relative z-10 w-full max-w-2xl">
         
-        {/* --- LEFT SIDEBAR (Navigation & Roster) --- */}
-        <div className="w-full md:w-64 flex flex-col gap-2">
+        {/* Character Peek */}
+        {view === 'compose' && (
+          <div className="absolute -top-16 left-1/2 transform -translate-x-1/2 w-32 h-32 z-0 animate-float transition-all duration-500">
+            <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-lg">
+              <path d="M20,40 h60 v40 h-10 v10 h-10 v-10 h-20 v10 h-10 v-10 h-10 z" fill="#a3e635" /> 
+              <rect x="30" y="30" width="40" height="40" fill="#fefce8" rx="2" />
+              <rect x="35" y="45" width="10" height="10" fill="black" /> 
+              <rect x="55" y="45" width="10" height="10" fill="black" /> 
+              <rect x="48" y="30" width="4" height="10" fill="#a3e635" /> 
+              <circle cx="50" cy="25" r="5" fill="#a3e635" /> 
+            </svg>
+             <div className="absolute -right-12 top-0 bg-white p-2 pixel-border-sm font-handheld text-lg animate-blink">
+               Ready!
+             </div>
+          </div>
+        )}
+
+        {/* The Desk */}
+        <div className="bg-[#8b7355] p-2 pixel-border pixel-corners">
+          <div className="bg-[#a08560] border-4 border-[#6d5a43] p-6 min-h-[500px] flex flex-col gap-6 relative">
             
-            {/* Brand / Nav Header */}
-            <div className="bg-[#5e4c35] p-4 pixel-border-sm text-[#e0d5c1] flex flex-col gap-2">
-                <h1 className="font-pixel text-sm text-[#a3e635] flex items-center gap-2">
-                    <Globe size={16} /> 
-                    GIFT.NET
-                </h1>
-                <div className="flex gap-2 mt-2">
-                    <button 
-                        onClick={() => setCurrentView('dashboard')}
-                        className={`flex-1 py-2 text-center font-pixel text-[8px] pixel-border-sm transition-all ${currentView === 'dashboard' ? 'bg-[#e0d5c1] text-[#5e4c35]' : 'bg-[#4a3b2a] hover:bg-[#6d5a43]'}`}
-                    >
-                        MAP
-                    </button>
-                    <button 
-                        onClick={() => setCurrentView('history')}
-                        className={`flex-1 py-2 text-center font-pixel text-[8px] pixel-border-sm transition-all ${currentView === 'history' ? 'bg-[#e0d5c1] text-[#5e4c35]' : 'bg-[#4a3b2a] hover:bg-[#6d5a43]'}`}
-                    >
-                        HISTORY
-                    </button>
-                </div>
+            {/* Header */}
+            <div className="flex justify-center items-center bg-[#5e4c35] p-3 pixel-border-sm text-[#e0d5c1]">
+              <div className="flex items-center gap-3">
+                <MapPin className="w-5 h-5" />
+                <span className="font-pixel text-xs md:text-sm tracking-widest">
+                  FROM: ME &rarr; TO: LONDON
+                </span>
+              </div>
             </div>
 
-            {/* Character Roster */}
-            <div className="bg-[#a08560] p-2 pixel-border-sm flex-1 overflow-hidden flex flex-col">
-                <div className="font-pixel text-[8px] text-[#4a3b2a] mb-2 uppercase tracking-widest border-b border-[#8b7355] pb-1 flex justify-between items-center">
-                    <span>COURIERS</span>
-                    <span className="text-[6px] bg-[#4a3b2a] text-[#e0d5c1] px-1 rounded">SORT: STATUS</span>
-                </div>
-                <div className="flex flex-col gap-2 overflow-y-auto pr-1 pt-2">
-                    {sortedChars.map(char => (
-                        <SidebarItem 
-                            key={char.id} 
-                            char={char} 
-                            isSelected={selectedChar?.id === char.id}
-                            onClick={handleCharClick}
-                        />
-                    ))}
+            {view === 'compose' && (
+              <div className="flex flex-col md:flex-row gap-6 h-full flex-grow">
+                
+                {/* Left Side: The Letter */}
+                <div className={`flex-1 bg-[#fdfbf7] p-6 relative flex flex-col transition-all duration-700 ${isSealed ? 'scale-0 opacity-0' : 'scale-100 opacity-100'}`} style={{ boxShadow: '4px 4px 0px rgba(0,0,0,0.2)' }}>
+                  
+                  <div className="absolute top-0 left-0 right-0 h-8 bg-blue-100 opacity-20 pointer-events-none"></div>
+                  
+                  <div className="font-handheld text-3xl text-gray-800 mb-4 border-b-2 border-dashed border-gray-300 pb-2">
+                    Dear Friend,
+                  </div>
+                  
+                  <textarea 
+                    className="w-full flex-grow bg-transparent border-none resize-none font-handheld text-2xl text-gray-700 focus:outline-none leading-relaxed custom-textarea min-h-[120px]"
+                    placeholder="Write your message here..."
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    autoFocus
+                  />
+
+                  {/* Attached Items Drop Zone */}
+                  <div className="mt-4 border-t-2 border-gray-200 pt-4">
+                    <div className="flex justify-between items-end mb-2">
+                        <div className="font-pixel text-[10px] text-gray-400 uppercase tracking-wider">Attachments ({attachedItems.length}/3)</div>
+                    </div>
                     
-                    {/* Add New Button */}
-                    <button className="w-full py-3 border-2 border-dashed border-[#6d5a43] text-[#6d5a43] font-pixel text-[8px] hover:bg-[#8b7355] hover:text-[#e0d5c1] transition-colors flex items-center justify-center gap-2 opacity-50 hover:opacity-100">
-                        <Plus size={12} /> HIRE NEW
-                    </button>
-                </div>
-            </div>
-
-            {/* Mini Stats Footer */}
-            <div className="bg-[#4a3b2a] p-2 pixel-border-sm text-[#e0d5c1] font-handheld text-sm flex justify-between">
-                <span>XP: Lvl 3</span>
-                <span>3/5 Slots</span>
-            </div>
-        </div>
-
-        {/* --- MAIN CONTENT AREA --- */}
-        <div className="flex-1 bg-[#a08560] border-4 border-[#6d5a43] relative overflow-hidden flex flex-col">
-            
-            {/* VIEW: DASHBOARD (Map) */}
-            {currentView === 'dashboard' && (
-                <div className="absolute inset-0 bg-[#e5e7eb] flex flex-col animate-in fade-in duration-300">
-                    {/* Fake Map Background */}
-                    <div className="flex-1 relative map-pattern overflow-hidden">
-                        {/* Fake Landmasses (SVG) */}
-                        <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-20" preserveAspectRatio="none">
-                            <path d="M0,100 Q150,50 300,100 T600,80 T900,150 V300 H0 Z" fill="#94a3b8" />
-                            <path d="M400,0 Q450,100 600,50 T800,0 Z" fill="#94a3b8" />
-                        </svg>
-                        
-                        {/* Map Grid/Decorations */}
-                        <div className="absolute top-4 left-4 bg-white/80 p-2 pixel-border-sm z-20">
-                            <div className="font-pixel text-[8px] text-gray-500">GLOBAL TRACKER</div>
+                    <div className="flex gap-2 min-h-[60px] bg-gray-50 p-2 border-2 border-dashed border-gray-200 rounded-lg items-center">
+                      {attachedItems.length === 0 && (
+                        <span className="font-handheld text-xl text-gray-400 italic w-full text-center">Empty...</span>
+                      )}
+                      {attachedItems.map(item => (
+                        <div key={item.id} className="relative group animate-in zoom-in duration-300">
+                            <button 
+                                onClick={() => removeItem(item.id)}
+                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                            >
+                                <X size={12} />
+                            </button>
+                            <div className="bg-white border-2 border-black p-2 flex flex-col items-center gap-1 shadow-md w-20 h-20 justify-center">
+                            <span className="text-gray-800">{item.icon}</span>
+                            <span className="font-pixel text-[8px] text-center leading-tight truncate w-full">{item.detail}</span>
+                            </div>
                         </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
 
-                        {/* Pins */}
-                        {CHARACTERS.map(char => (
-                            <CharacterPin key={char.id} char={char} onClick={handleCharClick} />
+                {/* Right Side: Tools Pouch */}
+                <div className={`w-full md:w-48 bg-[#4a3b2a] p-3 pixel-border-sm flex flex-col gap-3 transition-all duration-500 ${isSealed ? 'translate-x-20 opacity-0' : ''}`}>
+                  <div className="text-[#e0d5c1] font-pixel text-xs text-center border-b-2 border-[#6d5a43] pb-2">
+                    TOOLKIT
+                  </div>
+                  
+                  <div className="flex flex-col gap-2 overflow-y-auto">
+                    {TOOLS.map(tool => {
+                      const isDisabled = attachedItems.length >= 3;
+                      return (
+                        <button
+                          key={tool.id}
+                          onClick={() => handleToolClick(tool.id)}
+                          disabled={isDisabled}
+                          className={`
+                            p-3 text-left flex items-center gap-3 transition-all pixel-border-sm group
+                            ${isDisabled
+                              ? 'bg-[#5e4c35] opacity-50 cursor-not-allowed' 
+                              : 'bg-[#6d5a43] text-[#e0d5c1] hover:bg-[#a3e635] hover:text-black hover:-translate-y-1 active:translate-y-0'}
+                          `}
+                        >
+                          <span className="text-xl group-hover:scale-110 transition-transform">{tool.icon}</span>
+                          <div className="flex flex-col">
+                            <span className="font-pixel text-[9px] leading-tight">{tool.name}</span>
+                            <span className="font-handheld text-sm opacity-70 leading-none group-hover:opacity-100">{tool.desc}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-auto">
+                    <button 
+                      onClick={handleSend}
+                      disabled={message.length === 0}
+                      className={`
+                        w-full py-3 font-pixel text-xs uppercase tracking-widest
+                        transition-all duration-200
+                        ${message.length > 0 
+                          ? 'bg-[#ef4444] text-white pixel-border-sm hover:translate-y-1 active:translate-y-2 shadow-[0_4px_0_#991b1b]' 
+                          : 'bg-gray-600 text-gray-400 cursor-not-allowed'}
+                      `}
+                    >
+                      {isSealed ? 'Sealing...' : 'Seal It'}
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* View: Sealed / Sending */}
+            {view === 'sending' && (
+              <div className="flex-grow flex flex-col items-center justify-center animate-in fade-in zoom-in duration-500">
+                <div className="bg-[#fdfbf7] w-64 h-40 pixel-border relative flex items-center justify-center rotate-3 shadow-xl">
+                  <div className="absolute inset-0 bg-red-500 opacity-5 scanline"></div>
+                  <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center shadow-lg border-4 border-red-800 animate-pulse">
+                    <span className="font-handheld text-white text-3xl font-bold">♥</span>
+                  </div>
+                  <div className="absolute bottom-4 right-4 font-handheld text-gray-400 text-xl -rotate-6 border-2 border-gray-300 px-2">
+                    AIR MAIL
+                  </div>
+                </div>
+                <div className="mt-12 font-pixel text-sm text-[#e0d5c1] animate-pulse">
+                  HANDING OFF TO COURIER...
+                </div>
+              </div>
+            )}
+
+            {/* View: Sent Success */}
+            {view === 'sent' && (
+              <div className="flex-grow flex flex-col items-center justify-center text-center">
+                <div className="w-32 h-32 mb-6 relative">
+                   <svg viewBox="0 0 100 100" className="w-full h-full animate-float opacity-50">
+                     <path d="M20,40 h60 v40 h-10 v10 h-10 v-10 h-20 v10 h-10 v-10 h-10 z" fill="#a3e635" />
+                     <rect x="30" y="30" width="40" height="40" fill="#fefce8" rx="2" />
+                     <rect x="35" y="45" width="30" height="25" fill="#4a3b2a" />
+                     <rect x="48" y="30" width="4" height="10" fill="#a3e635" /> 
+                     <circle cx="50" cy="25" r="5" fill="#a3e635" /> 
+                   </svg>
+                </div>
+                <h2 className="font-pixel text-xl text-[#a3e635] mb-4">ON THE WAY!</h2>
+                <div className="bg-[#5e4c35] p-4 pixel-border-sm text-[#e0d5c1] max-w-sm">
+                    <p className="font-handheld text-xl mb-2">Manifest:</p>
+                    <ul className="font-pixel text-[10px] text-left space-y-2">
+                        {attachedItems.map((i, idx) => (
+                            <li key={idx} className="flex gap-2">
+                                <span>- {i.name}</span>
+                                <span className="text-[#a3e635]">[{i.detail}]</span>
+                            </li>
                         ))}
-                    </div>
-
-                    {/* Selected Character Detail Panel (Bottom Overlay) */}
-                    {selectedChar && !isSealed && (
-                        <div className="bg-white p-4 border-t-4 border-[#6d5a43] flex items-center gap-4 animate-in slide-in-from-bottom duration-300">
-                            <div className="w-16 h-16 border-2 border-black relative" style={{ backgroundColor: selectedChar.color }}>
-                                 <div className="absolute top-4 left-2 w-2 h-4 bg-black"></div>
-                                 <div className="absolute top-4 right-2 w-2 h-4 bg-black"></div>
-                            </div>
-                            <div className="flex-1">
-                                <h3 className="font-pixel text-sm flex items-center gap-2">
-                                    {selectedChar.name}
-                                    {selectedChar.status === 'Ready' && <span className="bg-red-500 text-white text-[8px] px-1 py-0.5 rounded">READY!</span>}
-                                </h3>
-                                <p className="font-handheld text-lg text-gray-600">
-                                    {selectedChar.status === 'Ready' 
-                                      ? "Waiting for orders at base." 
-                                      : `Currently traveling to ${selectedChar.destination}.`}
-                                </p>
-                                {selectedChar.status !== 'Ready' && (
-                                    <div className="w-full bg-gray-200 h-2 mt-2 border border-gray-400 rounded-full overflow-hidden">
-                                        <div className="h-full bg-[#a3e635]" style={{ width: `${selectedChar.progress}%` }}></div>
-                                    </div>
-                                )}
-                            </div>
-                            
-                            {/* Action Button */}
-                            {selectedChar.status === 'Ready' ? (
-                                <button 
-                                    onClick={() => setCurrentView('compose')}
-                                    className="bg-[#ef4444] text-white px-4 py-2 font-pixel text-[10px] pixel-border-sm hover:translate-y-[-2px] hover:shadow-lg animate-bounce-sm"
-                                >
-                                    START QUEST
-                                </button>
-                            ) : (
-                                <button onClick={() => setCurrentView('history')} className="bg-gray-200 text-gray-600 px-4 py-2 font-pixel text-[10px] pixel-border-sm hover:bg-gray-300">
-                                    VIEW LOGS
-                                </button>
-                            )}
-                        </div>
-                    )}
+                    </ul>
                 </div>
+                <button 
+                  onClick={() => {setView('compose'); setIsSealed(false); setMessage(''); setAttachedItems([])}}
+                  className="mt-8 text-[#e0d5c1] font-pixel text-xs underline hover:text-white"
+                >
+                  WRITE ANOTHER
+                </button>
+              </div>
             )}
 
-            {/* VIEW: HISTORY (Logs) */}
-            {currentView === 'history' && (
-                <div className="flex-1 bg-[#fdfbf7] p-6 relative flex flex-col h-full animate-in fade-in duration-300 overflow-hidden">
-                    <div className="absolute top-0 left-0 right-0 h-8 bg-yellow-100 opacity-20 pointer-events-none"></div>
-                    
-                    <div className="flex items-center gap-4 mb-6 border-b-2 border-dashed border-gray-300 pb-4">
-                        <History size={24} className="text-[#8b7355]" />
-                        <div>
-                            <h2 className="font-handheld text-3xl text-gray-800">Mission Logs</h2>
-                            <p className="font-pixel text-[10px] text-gray-500">
-                                {selectedChar ? `TRACKING: ${selectedChar.name.toUpperCase()}` : 'SELECT A COURIER TO VIEW LOGS'}
-                            </p>
-                        </div>
-                    </div>
+          </div>
 
-                    <div className="flex-1 overflow-y-auto">
-                        {!selectedChar ? (
-                            <div className="h-full flex flex-col items-center justify-center text-gray-400 opacity-50">
-                                <User size={48} className="mb-2" />
-                                <span className="font-pixel text-xs">NO COURIER SELECTED</span>
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                {selectedChar.history.length === 0 ? (
-                                    <div className="text-center font-handheld text-xl text-gray-400 mt-10">No prior missions recorded.</div>
-                                ) : (
-                                    selectedChar.history.map((log) => (
-                                        <div key={log.id} className="bg-white border-2 border-gray-200 p-4 relative group hover:border-black transition-colors">
-                                            {/* Stamp style date */}
-                                            <div className="absolute -top-3 -right-2 bg-[#a3e635] text-black font-pixel text-[8px] px-2 py-1 rotate-3 border border-black">
-                                                {log.date}
-                                            </div>
-                                            
-                                            <div className="flex gap-4">
-                                                <div className="flex flex-col items-center gap-1">
-                                                    <div className="w-2 h-2 rounded-full bg-gray-300"></div>
-                                                    <div className="w-0.5 h-full bg-gray-300"></div>
-                                                </div>
-                                                <div className="flex-1">
-                                                    <h3 className="font-pixel text-[10px] text-gray-600 mb-1">DESTINATION: {log.location.toUpperCase()}</h3>
-                                                    <div className="font-handheld text-xl mb-2">Delivered to {log.to}</div>
-                                                    <div className="flex gap-2">
-                                                        {log.items.map((item, idx) => (
-                                                            <span key={idx} className="bg-gray-100 px-2 py-1 font-pixel text-[8px] text-gray-500 border border-gray-300 rounded">
-                                                                {item}
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* VIEW: COMPOSE (Quest) */}
-            {currentView === 'compose' && selectedChar && (
-                <div className="flex-1 bg-[#fdfbf7] p-8 relative flex flex-col h-full animate-in fade-in zoom-in duration-300">
-                    {/* Watermark */}
-                    <div className="absolute top-0 left-0 right-0 h-8 bg-red-100 opacity-20 pointer-events-none"></div>
-                    
-                    {/* Header with Back Button */}
-                    <div className="flex justify-between items-start mb-6">
-                        <div className="flex items-center gap-4">
-                            <button 
-                                onClick={() => setCurrentView('dashboard')}
-                                className="p-2 border-2 border-gray-300 hover:bg-gray-100 hover:border-black transition-colors"
-                            >
-                                <ArrowLeft size={16} />
-                            </button>
-                            <div>
-                                <div className="font-handheld text-3xl text-gray-800">New Quest</div>
-                                <div className="font-pixel text-[10px] text-green-600 mt-1 flex items-center gap-2">
-                                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                                    COURIER {selectedChar.name} IS READY
-                                </div>
-                            </div>
-                        </div>
-                        
-                        {/* Courier Avatar */}
-                        <div className="w-12 h-12 border-2 border-black relative" style={{backgroundColor: selectedChar.color}}>
-                            <div className="absolute top-3 left-2 w-1.5 h-3 bg-black"></div>
-                            <div className="absolute top-3 right-2 w-1.5 h-3 bg-black"></div>
-                            {/* Backpack */}
-                            <div className="absolute bottom-0 w-full h-4 bg-black/20"></div>
-                        </div>
-                    </div>
-
-                    {/* Text Area */}
-                    <textarea 
-                        className="w-full flex-grow bg-transparent border-none resize-none font-handheld text-2xl text-gray-700 focus:outline-none leading-relaxed p-0"
-                        placeholder={`What should ${selectedChar.name} carry to your friend?`}
-                        value={composeMessage}
-                        onChange={(e) => setComposeMessage(e.target.value)}
-                        autoFocus
-                    />
-
-                    {/* Attachments Bar */}
-                    <div className="mt-auto pt-4 border-t-2 border-dashed border-gray-300">
-                        <div className="flex items-center gap-4">
-                            <div className="flex gap-2">
-                                {TOOLS.map(tool => (
-                                    <button 
-                                        key={tool.id}
-                                        onClick={() => tool.id === 'voice' || tool.id === 'drawing' ? setActiveTool(tool.id) : setAttachedItems([...attachedItems, {id: Date.now(), icon: tool.icon, name: tool.name}])}
-                                        className="p-2 bg-gray-100 border border-gray-300 hover:bg-[#a3e635] hover:border-black hover:text-black transition-colors group"
-                                        title={tool.name}
-                                    >
-                                        <div className="group-hover:scale-110 transition-transform">
-                                           {tool.icon}
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-                            <div className="w-px h-8 bg-gray-300"></div>
-                            {/* Attached Items Preview */}
-                            <div className="flex gap-1 overflow-x-auto">
-                                {attachedItems.map((item, i) => (
-                                    <div key={i} className="bg-white border border-black px-2 py-1 flex items-center gap-1 font-pixel text-[8px] animate-in zoom-in">
-                                        {item.icon} {item.name}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Send Button */}
-                        <div className="mt-4 flex justify-end">
-                            <button 
-                                onClick={handleComposeSend}
-                                className={`px-8 py-3 font-pixel text-xs uppercase tracking-widest transition-all
-                                    ${composeMessage ? 'bg-[#ef4444] text-white pixel-border-sm hover:-translate-y-1' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}
-                                `}
-                            >
-                                {isSealed ? 'SEALING...' : 'START QUEST'}
-                            </button>
-                        </div>
-                    </div>
-                    
-                    {/* Sealed Overlay Animation */}
-                    {isSealed && (
-                        <div className="absolute inset-0 bg-[#fdfbf7] z-20 flex flex-col items-center justify-center animate-in fade-in duration-500">
-                             <div className="w-24 h-24 bg-red-600 rounded-full flex items-center justify-center shadow-xl border-4 border-red-800 mb-4 animate-bounce">
-                                <span className="font-handheld text-white text-4xl">♥</span>
-                             </div>
-                             <div className="font-pixel text-sm text-gray-500">DISPATCHING {selectedChar.name.toUpperCase()}...</div>
-                        </div>
-                    )}
-                </div>
-            )}
-
+          <div className="mt-2 flex justify-between px-4">
+             <div className="flex gap-2">
+                <div className="w-2 h-2 bg-[#4a3b2a] rounded-full"></div>
+                <div className="w-2 h-2 bg-[#4a3b2a] rounded-full"></div>
+             </div>
+             <div className="font-pixel text-[10px] text-[#5e4c35]">
+                VER 2.1
+             </div>
+          </div>
         </div>
-
-        {/* --- DESK EDGES DECORATION --- */}
-        <div className="absolute -bottom-1 left-4 w-32 h-1 bg-black/20 rounded-full blur-sm z-0"></div>
-      </div>
-      
-      <div className="fixed bottom-2 right-2 font-pixel text-[8px] text-white opacity-30">
-        V4.0 QUEST
       </div>
     </div>
   );

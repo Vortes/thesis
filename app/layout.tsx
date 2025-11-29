@@ -30,11 +30,6 @@ export default function RootLayout({
       <html lang="en">
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
           <Providers>
-            <header className="flex justify-end items-center p-4 gap-4 h-16">
-              <SignedIn>
-                <UserButton />
-              </SignedIn>
-            </header>
             {children}
           </Providers>
         </body>

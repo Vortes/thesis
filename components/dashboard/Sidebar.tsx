@@ -3,6 +3,8 @@ import { Globe, Plus, AlertCircle } from 'lucide-react';
 import { Character } from '@/lib/dashboard-data';
 import { SidebarItem } from './SidebarItem';
 
+import { SignedIn, UserButton } from "@clerk/nextjs";
+
 interface SidebarProps {
     currentView: string;
     setCurrentView: (view: string) => void;
@@ -19,14 +21,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
     handleCharClick 
 }) => {
     return (
-        <div className="w-full md:w-64 flex flex-col gap-2">
+        <div className="w-full md:w-64 flex flex-col gap-2 h-full p-2">
             
             {/* Brand / Nav Header */}
             <div className="bg-[#5e4c35] p-4 pixel-border-sm text-[#e0d5c1] flex flex-col gap-2">
-                <h1 className="font-pixel text-sm text-pixel-accent flex items-center gap-2">
-                    <Globe size={16} /> 
-                    HAUS
-                </h1>
+                <div className="flex justify-between items-center">
+                    <h1 className="font-pixel text-sm text-pixel-accent flex items-center gap-2">
+                        <Globe size={16} /> 
+                        HAUMAIL
+                    </h1>
+                    <SignedIn>
+                        <UserButton />
+                    </SignedIn>
+                </div>
                 <div className="flex gap-2 mt-2">
                     <button 
                         onClick={() => setCurrentView('dashboard')}
@@ -66,11 +73,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </div>
             </div>
 
-            {/* Mini Stats Footer */}
-            <div className="bg-[#4a3b2a] p-2 pixel-border-sm text-[#e0d5c1] font-handheld text-sm flex justify-between">
-                <span>XP: Lvl 3</span>
-                <span>3/5 Slots</span>
-            </div>
         </div>
     );
 };

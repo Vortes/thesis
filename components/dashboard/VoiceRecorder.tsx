@@ -55,7 +55,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onSave, onCancel }
                      </div>
                      <div className="flex gap-2 w-full">
                         {!hasRecording ? (
-                            <button onClick={handleToggleRecord} className="flex-1 bg-red-500 text-white py-2 pixel-border-sm font-pixel text-[8px]">{isRecording ? 'STOP' : 'RECORD'}</button>
+                            <button onClick={handleToggleRecord} className="flex-1 bg-red-500 text-white py-4 pixel-border-sm font-pixel text-[8px]">{isRecording ? 'STOP' : 'RECORD'}</button>
                         ) : (
                             <>
                              <button onClick={() => {setHasRecording(false); setDuration(0)}} className="flex-1 bg-gray-300 py-2 pixel-border-sm font-pixel text-[8px]">RETRY</button>
