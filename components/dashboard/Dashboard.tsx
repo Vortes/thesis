@@ -40,6 +40,12 @@ export default function Dashboard() {
 
   const handleComposeSend = () => {
       setIsSealed(true);
+      setTimeout(() => {
+          setComposeMessage('');
+          setAttachedItems([]);
+          setIsSealed(false);
+          setCurrentView('dashboard');
+      }, 2500);
   };
 
   return (
@@ -55,7 +61,7 @@ export default function Dashboard() {
       {activeTool === 'drawing' && <DrawingPad onSave={(i)=>{setAttachedItems([...attachedItems, i]); setActiveTool(null)}} onCancel={()=>setActiveTool(null)} />}
 
       {/* --- MAIN CONTAINER --- */}
-      <div className="relative z-10 w-full h-full flex flex-col md:flex-row bg-pixel-bg p-0 pixel-border pixel-corners gap-0">
+      <div className="relative z-10 w-full h-full flex flex-col md:flex-row bg-pixel-bg p-3 pixel-border pixel-corners gap-0">
         
         {/* --- LEFT SIDEBAR (Navigation & Roster) --- */}
         <Sidebar 
@@ -67,7 +73,7 @@ export default function Dashboard() {
         />
 
         {/* --- MAIN CONTENT AREA --- */}
-        <div className="flex-1 bg-[#a08560] border-4 border-[#6d5a43] relative overflow-hidden flex flex-col">
+        <div className="flex-1 bg-[#a08560] border-4 border-[#6d5a43] relative overflow-hidden flex flex-col pixel-border pixel-corners">
             
             {/* VIEW: DASHBOARD (Map) */}
             {currentView === 'dashboard' && (
@@ -93,7 +99,6 @@ export default function Dashboard() {
                     attachedItems={attachedItems} 
                     setAttachedItems={setAttachedItems} 
                     isSealed={isSealed} 
-                    setIsSealed={setIsSealed}
                     handleComposeSend={handleComposeSend} 
                     composeMessage={composeMessage} 
                     setComposeMessage={setComposeMessage} 

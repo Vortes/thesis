@@ -14,7 +14,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({ char, isSelected, onCl
     return (
         <button 
             onClick={() => onClick(char)}
-            className={`w-full p-3 flex items-center gap-3 text-left pixel-border-sm transition-all group relative overflow-visible
+            className={`w-full p-3 flex items-center gap-3 text-left pixel-border-sm transition-all group relative overflow-visible hover:cursor-pointer
                 ${isSelected 
                     ? 'bg-pixel-accent text-black -translate-y-1' 
                     : isReady ? 'bg-yellow-50 hover:bg-yellow-100' : 'bg-[#fdfbf7] text-gray-700 hover:bg-gray-50'}
@@ -35,7 +35,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({ char, isSelected, onCl
                     {char.status === 'Ready' && <AlertCircle size={12} className="text-red-500 animate-bounce-sm" />}
                 </div>
                 <span className="font-handheld text-sm opacity-70 truncate uppercase">
-                    {char.status === 'Ready' ? 'WAITING FOR QUEST' : `${char.status} > ${char.destination}`}
+                    {char.status === 'Ready' ? 'AVAILABLE' : `${char.status} > ${char.destination}`}
                 </span>
             </div>
             

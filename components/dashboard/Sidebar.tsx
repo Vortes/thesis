@@ -21,7 +21,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     handleCharClick 
 }) => {
     return (
-        <div className="w-full md:w-64 flex flex-col gap-2 h-full p-2">
+        <div className="w-full md:w-86 flex flex-col gap-2 h-full p-2">
             
             {/* Brand / Nav Header */}
             <div className="bg-[#5e4c35] p-4 pixel-border-sm text-[#e0d5c1] flex flex-col gap-2">
@@ -56,7 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <span>COURIERS</span>
                     <span className="text-[6px] bg-[#4a3b2a] text-[#e0d5c1] px-1 rounded">SORT: STATUS</span>
                 </div>
-                <div className="flex flex-col gap-2 overflow-y-auto pr-1 pt-2">
+                <div className="flex flex-col gap-2 pr-1 pt-2">
                     {sortedChars.map(char => (
                         <SidebarItem 
                             key={char.id} 

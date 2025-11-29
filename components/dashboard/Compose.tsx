@@ -81,27 +81,10 @@ export const Compose: React.FC<ComposeProps> = ({
 
     return (
         <div className="relative z-10 w-full   h-full flex flex-col">
-            
-            {/* Character Peek */}
-            {view === 'compose' && (
-              <div className="absolute -top-16 left-1/2 transform -translate-x-1/2 w-32 h-32 z-0 animate-float transition-all duration-500">
-                <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-lg">
-                  <path d="M20,40 h60 v40 h-10 v10 h-10 v-10 h-20 v10 h-10 v-10 h-10 z" fill="#a3e635" /> 
-                  <rect x="30" y="30" width="40" height="40" fill="#fefce8" rx="2" />
-                  <rect x="35" y="45" width="10" height="10" fill="black" /> 
-                  <rect x="55" y="45" width="10" height="10" fill="black" /> 
-                  <rect x="48" y="30" width="4" height="10" fill="#a3e635" /> 
-                  <circle cx="50" cy="25" r="5" fill="#a3e635" /> 
-                </svg>
-                 <div className="absolute -right-12 top-0 bg-white p-2 pixel-border-sm font-handheld text-lg animate-blink">
-                   Ready!
-                 </div>
-              </div>
-            )}
 
             {/* The Desk */}
             <div className="bg-[#8b7355] p-2 pixel-border pixel-corners h-full w-full">
-              <div className="bg-[#a08560] border-4 border-[#6d5a43] p-6 h-full flex flex-col gap-6 relative">
+              <div className="bg-[#a08560] p-6 h-full flex flex-col gap-6 relative">
                 
                 {/* Header */}
                 <div className="flex justify-center items-center bg-[#5e4c35] p-3 pixel-border-sm text-[#e0d5c1]">
@@ -114,7 +97,7 @@ export const Compose: React.FC<ComposeProps> = ({
                 </div>
 
                 {view === 'compose' && (
-                  <div className="flex flex-col md:flex-row gap-6 h-full flex-grow overflow-hidden">
+                  <div className="flex flex-col md:flex-row gap-6 h-full flex-grow">
                     
                     {/* Left Side: The Letter */}
                     <div className={`flex-1 bg-[#fdfbf7] p-6 relative flex flex-col transition-all duration-700 ${isSealed ? 'scale-0 opacity-0' : 'scale-100 opacity-100'}`} style={{ boxShadow: '4px 4px 0px rgba(0,0,0,0.2)' }}>
@@ -162,12 +145,12 @@ export const Compose: React.FC<ComposeProps> = ({
                     </div>
 
                     {/* Right Side: Tools Pouch */}
-                    <div className={`w-full md:w-48 bg-[#4a3b2a] p-3 pixel-border-sm flex flex-col gap-3 transition-all duration-500 ${isSealed ? 'translate-x-20 opacity-0' : ''}`}>
+                    <div className={`w-full md:w-64 bg-[#4a3b2a] p-3 pixel-border-sm flex flex-col gap-3 transition-all duration-500 ${isSealed ? 'translate-x-20 opacity-0' : ''}`}>
                       <div className="text-[#e0d5c1] font-pixel text-xs text-center border-b-2 border-[#6d5a43] pb-2">
                         TOOLKIT
                       </div>
                       
-                      <div className="flex flex-col gap-2 overflow-y-auto flex-1">
+                      <div className="flex flex-col gap-2 flex-1">
                         {TOOLS.map(tool => {
                           const isDisabled = attachedItems.length >= 3;
                           return (
