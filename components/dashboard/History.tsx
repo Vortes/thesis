@@ -21,7 +21,7 @@ export const History: React.FC<HistoryProps> = ({ selectedChar }) => {
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1">
                 {!selectedChar ? (
                     <div className="h-full flex flex-col items-center justify-center text-gray-400 opacity-50">
                         <User size={48} className="mb-2" />

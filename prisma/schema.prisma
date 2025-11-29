@@ -121,6 +121,8 @@ enum GiftType {
   TEXT
   AUDIO
   DRAWING
+  LINK
+  PHOTO
 }
 
 model Invitation {

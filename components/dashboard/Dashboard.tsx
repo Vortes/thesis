@@ -102,6 +102,7 @@ export default function Dashboard() {
                     handleComposeSend={handleComposeSend} 
                     composeMessage={composeMessage} 
                     setComposeMessage={setComposeMessage} 
+                    setIsSealed={setIsSealed}
                 />
             )}
 
