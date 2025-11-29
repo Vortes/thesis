@@ -1,0 +1,638 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Send, Gift, MapPin, Music, Coffee, Star, X, Mic, Link as LinkIcon, Image as ImageIcon, PenTool, Play, Square, Save, RotateCcw, Eraser, LayoutDashboard, Mail, Globe, User, Plus, History, ArrowLeft, AlertCircle, Clock, Calendar } from 'lucide-react';
+
+// --- STYLES & FONTS ---
+const fonts = (
+  <style>
+    {`
+      @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
+      
+      .font-pixel { font-family: 'Press Start 2P', cursive; }
+      .font-handheld { font-family: 'VT323', monospace; }
+      
+      .pixel-border {
+        box-shadow: 
+          -4px 0 0 0 black,
+          4px 0 0 0 black,
+          0 -4px 0 0 black,
+          0 4px 0 0 black;
+      }
+      
+      .pixel-border-sm {
+        box-shadow: 
+          -2px 0 0 0 black,
+          2px 0 0 0 black,
+          0 -2px 0 0 black,
+          0 2px 0 0 black;
+      }
+      
+      .pixel-corners {
+         clip-path: polygon(
+          0px 4px, 4px 4px, 4px 0px,
+          calc(100% - 4px) 0px, calc(100% - 4px) 4px, 100% 4px,
+          100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%,
+          4px 100%, 4px calc(100% - 4px), 0px calc(100% - 4px)
+        );
+      }
+
+      /* Custom scrollbar */
+      ::-webkit-scrollbar { width: 8px; }
+      ::-webkit-scrollbar-track { background: #e0d5c1; }
+      ::-webkit-scrollbar-thumb { background: #8b7355; border: 2px solid #e0d5c1; }
+
+      /* Animations */
+      @keyframes float {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-5px); }
+        100% { transform: translateY(0px); }
+      }
+      .animate-float { animation: float 3s ease-in-out infinite; }
+      
+      @keyframes pulse-ring {
+        0% { transform: scale(0.8); opacity: 0.5; }
+        100% { transform: scale(2); opacity: 0; }
+      }
+      .animate-pulse-ring { animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+      @keyframes bounce-sm {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-4px); }
+      }
+      .animate-bounce-sm { animation: bounce-sm 1s infinite; }
+      
+      .map-pattern {
+        background-color: #e5e7eb;
+        background-image: 
+          linear-gradient(#fff 2px, transparent 2px),
+          linear-gradient(90deg, #fff 2px, transparent 2px);
+        background-size: 40px 40px;
+      }
+    `}
+  </style>
+);
+
+// --- MOCK DATA ---
+const CHARACTERS = [
+  { 
+    id: 2, 
+    name: 'Fuzz', 
+    status: 'Ready', // At Home, Ready for Quest
+    destination: 'Home Base', 
+    progress: 0, 
+    color: '#fca5a5', 
+    coords: { x: 25, y: 60 },
+    history: [
+      { id: 101, date: 'Oct 12', to: 'Sarah', location: 'Paris', items: ['Photo', 'Croissant'] },
+      { id: 102, date: 'Sep 05', to: 'Mom', location: 'Home', items: ['Voice Memo'] },
+    ]
+  },
+  { 
+    id: 1, 
+    name: 'Sprout', 
+    status: 'En Route', 
+    destination: 'Tokyo', 
+    progress: 65, 
+    color: '#a3e635', 
+    coords: { x: 60, y: 40 },
+    history: [
+      { id: 201, date: 'Nov 01', to: 'Kenji', location: 'Tokyo', items: ['Link', 'Drawing'] },
+    ]
+  },
+  { 
+    id: 3, 
+    name: 'Glip', 
+    status: 'Delivered', 
+    destination: 'London', 
+    progress: 100, 
+    color: '#60a5fa', 
+    coords: { x: 45, y: 30 },
+    history: [
+      { id: 301, date: 'Nov 28', to: 'James', location: 'London', items: ['Raindrop', 'Tea'] },
+      { id: 302, date: 'Oct 30', to: 'James', location: 'London', items: ['Drawing'] },
+      { id: 303, date: 'Sep 15', to: 'Anna', location: 'Berlin', items: ['Techno Beat'] },
+    ]
+  },
+];
+
+const TOOLS = [
+  { id: 'voice', name: 'Voice Memo', icon: <Mic />, type: 'audio', desc: 'Record audio' },
+  { id: 'link', name: 'Link', icon: <LinkIcon />, type: 'web', desc: 'Share a URL' },
+  { id: 'photo', name: 'Photo', icon: <ImageIcon />, type: 'image', desc: 'Camera roll' },
+  { id: 'drawing', name: 'Drawing', icon: <PenTool />, type: 'art', desc: 'Sketch pad' },
+];
+
+// --- SUB-COMPONENTS ---
+
+// (Re-using existing VoiceRecorder and DrawingPad components from previous turn)
+const VoiceRecorder = ({ onSave, onCancel }) => {
+    const [isRecording, setIsRecording] = useState(false);
+    const [duration, setDuration] = useState(0);
+    const [hasRecording, setHasRecording] = useState(false);
+    const timerRef = useRef(null);
+    const formatTime = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+    const handleToggleRecord = () => {
+        if (isRecording) { clearInterval(timerRef.current); setIsRecording(false); setHasRecording(true); } 
+        else { setDuration(0); setHasRecording(false); setIsRecording(true); timerRef.current = setInterval(() => setDuration(p => p + 1), 1000); }
+    };
+    const handleSave = () => onSave({ id: Date.now(), type: 'voice', name: 'Tape Recording', icon: <Mic />, detail: formatTime(duration) });
+    useEffect(() => () => clearInterval(timerRef.current), []);
+
+    return (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="bg-[#2d2d2d] p-1 pixel-border w-full max-w-sm relative">
+                <button onClick={onCancel} className="absolute -top-3 -right-3 bg-red-500 text-white p-1 pixel-border-sm hover:bg-red-600 z-10"><X size={16} /></button>
+                <div className="bg-[#e5e5e5] p-4 flex flex-col items-center gap-4 border-4 border-gray-700">
+                     <div className="w-full bg-[#333] h-24 rounded-lg flex items-center justify-center gap-4 px-4 pixel-border-sm">
+                        <div className={`w-8 h-8 rounded-full border-2 border-white border-dashed ${isRecording ? 'animate-spin' : ''}`}></div>
+                        <div className="flex-1 h-4 bg-white/20"></div>
+                        <div className={`w-8 h-8 rounded-full border-2 border-white border-dashed ${isRecording ? 'animate-spin' : ''}`}></div>
+                     </div>
+                     <div className="w-full bg-[#4a5d4a] p-2 pixel-border-sm font-handheld text-green-300 text-center text-xl flex justify-between">
+                        <span className={isRecording ? 'animate-pulse text-red-400' : ''}>● REC</span>
+                        <span>{formatTime(duration)}</span>
+                     </div>
+                     <div className="flex gap-2 w-full">
+                        {!hasRecording ? (
+                            <button onClick={handleToggleRecord} className="flex-1 bg-red-500 text-white py-2 pixel-border-sm font-pixel text-[8px]">{isRecording ? 'STOP' : 'RECORD'}</button>
+                        ) : (
+                            <>
+                             <button onClick={() => {setHasRecording(false); setDuration(0)}} className="flex-1 bg-gray-300 py-2 pixel-border-sm font-pixel text-[8px]">RETRY</button>
+                             <button onClick={handleSave} className="flex-1 bg-green-500 text-white py-2 pixel-border-sm font-pixel text-[8px]">SAVE</button>
+                            </>
+                        )}
+                     </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const DrawingPad = ({ onSave, onCancel }) => {
+    const canvasRef = useRef(null);
+    const [color, setColor] = useState('#000000');
+    const isDrawing = useRef(false);
+    
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if(!canvas) return;
+        canvas.width = 300; canvas.height = 300;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,300,300);
+    }, []);
+
+    const start = (e) => { isDrawing.current = true; draw(e); };
+    const stop = () => { isDrawing.current = false; };
+    const draw = (e) => {
+        if(!isDrawing.current) return;
+        const ctx = canvasRef.current.getContext('2d');
+        const rect = canvasRef.current.getBoundingClientRect();
+        const x = (e.clientX || e.touches[0].clientX) - rect.left;
+        const y = (e.clientY || e.touches[0].clientY) - rect.top;
+        ctx.fillStyle = color; ctx.fillRect(x,y,4,4); // Pixel brush
+    };
+    const handleSave = () => onSave({ id: Date.now(), type: 'drawing', name: 'Sketch', icon: <PenTool />, detail: 'Ink' });
+
+    return (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="bg-[#e0d5c1] p-1 pixel-border w-full max-w-sm relative">
+                <button onClick={onCancel} className="absolute -top-3 -right-3 bg-red-500 text-white p-1 pixel-border-sm hover:bg-red-600 z-10"><X size={16} /></button>
+                <div className="bg-white border-4 border-[#8b7355] p-2">
+                    <canvas ref={canvasRef} className="bg-white w-full h-[300px] cursor-crosshair pixel-border-sm" onMouseDown={start} onMouseMove={draw} onMouseUp={stop} onMouseLeave={stop} onTouchStart={start} onTouchMove={draw} onTouchEnd={stop} />
+                    <div className="flex justify-between mt-2">
+                        <div className="flex gap-1">
+                            {['#000000','#ef4444','#3b82f6'].map(c => <button key={c} onClick={()=>setColor(c)} className="w-6 h-6 border border-black" style={{backgroundColor:c}}/>)}
+                        </div>
+                        <button onClick={handleSave} className="bg-[#a3e635] px-4 py-1 font-pixel text-[8px] pixel-border-sm">ATTACH</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- MAIN DASHBOARD COMPONENTS ---
+
+const CharacterPin = ({ char, onClick }) => (
+    <div 
+        className="absolute transform -translate-x-1/2 -translate-y-full cursor-pointer group hover:z-50"
+        style={{ left: `${char.coords.x}%`, top: `${char.coords.y}%` }}
+        onClick={() => onClick(char)}
+    >
+        <div className="relative">
+            {/* Quest Marker for Ready Chars */}
+            {char.status === 'Ready' && (
+                <div className="absolute -top-6 left-1/2 -translate-x-1/2 animate-bounce-sm">
+                    <div className="bg-red-500 text-white font-pixel text-[10px] w-4 h-4 flex items-center justify-center pixel-border-sm border-white">!</div>
+                </div>
+            )}
+
+            {/* Status Pulse for En Route */}
+            {char.status === 'En Route' && (
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-white rounded-full animate-pulse-ring -z-10"></div>
+            )}
+            
+            {/* The Character Graphic (Tiny) */}
+            <div className={`w-10 h-10 pixel-border-sm bg-white p-1 relative z-10 transition-transform duration-200 ${char.status === 'Ready' ? 'hover:scale-110' : ''}`}>
+                <div className="w-full h-full" style={{ backgroundColor: char.color }}></div>
+                {/* Tiny eyes */}
+                <div className="absolute top-3 left-2 w-1 h-2 bg-black"></div>
+                <div className="absolute top-3 right-2 w-1 h-2 bg-black"></div>
+            </div>
+            
+            {/* Tooltip Label */}
+            <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-black text-white px-2 py-1 font-pixel text-[8px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 pixel-border-sm">
+                {char.name} ({char.status})
+            </div>
+        </div>
+        {/* Pin Stick */}
+        <div className="w-0.5 h-4 bg-black mx-auto"></div>
+    </div>
+);
+
+const SidebarItem = ({ char, isSelected, onClick }) => {
+    const isReady = char.status === 'Ready';
+    
+    return (
+        <button 
+            onClick={() => onClick(char)}
+            className={`w-full p-3 flex items-center gap-3 text-left pixel-border-sm transition-all group relative overflow-visible
+                ${isSelected 
+                    ? 'bg-[#a3e635] text-black -translate-y-1' 
+                    : isReady ? 'bg-yellow-50 hover:bg-yellow-100' : 'bg-[#fdfbf7] text-gray-700 hover:bg-gray-50'}
+            `}
+        >
+            {/* Avatar */}
+            <div className="w-8 h-8 border-2 border-black shrink-0 relative overflow-hidden" style={{ backgroundColor: char.color }}>
+                <div className="absolute top-2 left-1 w-1 h-2 bg-black"></div>
+                <div className="absolute top-2 right-1 w-1 h-2 bg-black"></div>
+            </div>
+            
+            {/* Info */}
+            <div className="flex flex-col flex-1 min-w-0">
+                <div className="flex justify-between items-center">
+                    <span className="font-pixel text-[10px] truncate">{char.name}</span>
+                    {/* Status Icons */}
+                    {char.status === 'En Route' && <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>}
+                    {char.status === 'Ready' && <AlertCircle size={12} className="text-red-500 animate-bounce-sm" />}
+                </div>
+                <span className="font-handheld text-sm opacity-70 truncate uppercase">
+                    {char.status === 'Ready' ? 'WAITING FOR QUEST' : `${char.status} > ${char.destination}`}
+                </span>
+            </div>
+            
+            {/* Selection Arrow */}
+            {isSelected && (
+                <div className="absolute -right-1 top-1/2 -translate-y-1/2 w-0 h-0 border-t-8 border-t-transparent border-b-8 border-b-transparent border-r-8 border-r-black"></div>
+            )}
+        </button>
+    );
+};
+
+
+export default function App() {
+  const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard', 'compose', 'history'
+  const [selectedChar, setSelectedChar] = useState(null);
+  const [activeTool, setActiveTool] = useState(null);
+  
+  // Compose State
+  const [composeMessage, setComposeMessage] = useState('');
+  const [attachedItems, setAttachedItems] = useState([]);
+  const [isSealed, setIsSealed] = useState(false);
+
+  // Sorting: Ready first, then others
+  const sortedChars = [...CHARACTERS].sort((a, b) => {
+      if (a.status === 'Ready' && b.status !== 'Ready') return -1;
+      if (a.status !== 'Ready' && b.status === 'Ready') return 1;
+      return 0;
+  });
+
+  const handleCharClick = (char) => {
+    setSelectedChar(char);
+    if (char.status === 'Ready') {
+        // If ready, go to quest menu (Compose)
+        setCurrentView('compose');
+    } else {
+        // If not ready, just view details
+        // If we are in compose mode and click a non-ready char, we should probably go back to dashboard or history
+        if (currentView === 'compose') setCurrentView('dashboard');
+    }
+  };
+
+  const handleComposeSend = () => {
+      setIsSealed(true);
+      setTimeout(() => {
+          setComposeMessage('');
+          setAttachedItems([]);
+          setIsSealed(false);
+          setCurrentView('dashboard');
+      }, 2500);
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-800 flex items-center justify-center p-4 relative overflow-hidden font-sans select-none">
+      {fonts}
+      
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-10" 
+           style={{ backgroundImage: 'radial-gradient(#ffffff 2px, transparent 2px)', backgroundSize: '32px 32px' }}>
+      </div>
+
+      {/* --- OVERLAYS (Modals) --- */}
+      {activeTool === 'voice' && <VoiceRecorder onSave={(i)=>{setAttachedItems([...attachedItems, i]); setActiveTool(null)}} onCancel={()=>setActiveTool(null)} />}
+      {activeTool === 'drawing' && <DrawingPad onSave={(i)=>{setAttachedItems([...attachedItems, i]); setActiveTool(null)}} onCancel={()=>setActiveTool(null)} />}
+
+      {/* --- MAIN CONTAINER --- */}
+      <div className="relative z-10 w-full max-w-5xl h-[85vh] flex flex-col md:flex-row bg-[#8b7355] p-2 pixel-border pixel-corners gap-2">
+        
+        {/* --- LEFT SIDEBAR (Navigation & Roster) --- */}
+        <div className="w-full md:w-64 flex flex-col gap-2">
+            
+            {/* Brand / Nav Header */}
+            <div className="bg-[#5e4c35] p-4 pixel-border-sm text-[#e0d5c1] flex flex-col gap-2">
+                <h1 className="font-pixel text-sm text-[#a3e635] flex items-center gap-2">
+                    <Globe size={16} /> 
+                    GIFT.NET
+                </h1>
+                <div className="flex gap-2 mt-2">
+                    <button 
+                        onClick={() => setCurrentView('dashboard')}
+                        className={`flex-1 py-2 text-center font-pixel text-[8px] pixel-border-sm transition-all ${currentView === 'dashboard' ? 'bg-[#e0d5c1] text-[#5e4c35]' : 'bg-[#4a3b2a] hover:bg-[#6d5a43]'}`}
+                    >
+                        MAP
+                    </button>
+                    <button 
+                        onClick={() => setCurrentView('history')}
+                        className={`flex-1 py-2 text-center font-pixel text-[8px] pixel-border-sm transition-all ${currentView === 'history' ? 'bg-[#e0d5c1] text-[#5e4c35]' : 'bg-[#4a3b2a] hover:bg-[#6d5a43]'}`}
+                    >
+                        HISTORY
+                    </button>
+                </div>
+            </div>
+
+            {/* Character Roster */}
+            <div className="bg-[#a08560] p-2 pixel-border-sm flex-1 overflow-hidden flex flex-col">
+                <div className="font-pixel text-[8px] text-[#4a3b2a] mb-2 uppercase tracking-widest border-b border-[#8b7355] pb-1 flex justify-between items-center">
+                    <span>COURIERS</span>
+                    <span className="text-[6px] bg-[#4a3b2a] text-[#e0d5c1] px-1 rounded">SORT: STATUS</span>
+                </div>
+                <div className="flex flex-col gap-2 overflow-y-auto pr-1 pt-2">
+                    {sortedChars.map(char => (
+                        <SidebarItem 
+                            key={char.id} 
+                            char={char} 
+                            isSelected={selectedChar?.id === char.id}
+                            onClick={handleCharClick}
+                        />
+                    ))}
+                    
+                    {/* Add New Button */}
+                    <button className="w-full py-3 border-2 border-dashed border-[#6d5a43] text-[#6d5a43] font-pixel text-[8px] hover:bg-[#8b7355] hover:text-[#e0d5c1] transition-colors flex items-center justify-center gap-2 opacity-50 hover:opacity-100">
+                        <Plus size={12} /> HIRE NEW
+                    </button>
+                </div>
+            </div>
+
+            {/* Mini Stats Footer */}
+            <div className="bg-[#4a3b2a] p-2 pixel-border-sm text-[#e0d5c1] font-handheld text-sm flex justify-between">
+                <span>XP: Lvl 3</span>
+                <span>3/5 Slots</span>
+            </div>
+        </div>
+
+        {/* --- MAIN CONTENT AREA --- */}
+        <div className="flex-1 bg-[#a08560] border-4 border-[#6d5a43] relative overflow-hidden flex flex-col">
+            
+            {/* VIEW: DASHBOARD (Map) */}
+            {currentView === 'dashboard' && (
+                <div className="absolute inset-0 bg-[#e5e7eb] flex flex-col animate-in fade-in duration-300">
+                    {/* Fake Map Background */}
+                    <div className="flex-1 relative map-pattern overflow-hidden">
+                        {/* Fake Landmasses (SVG) */}
+                        <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-20" preserveAspectRatio="none">
+                            <path d="M0,100 Q150,50 300,100 T600,80 T900,150 V300 H0 Z" fill="#94a3b8" />
+                            <path d="M400,0 Q450,100 600,50 T800,0 Z" fill="#94a3b8" />
+                        </svg>
+                        
+                        {/* Map Grid/Decorations */}
+                        <div className="absolute top-4 left-4 bg-white/80 p-2 pixel-border-sm z-20">
+                            <div className="font-pixel text-[8px] text-gray-500">GLOBAL TRACKER</div>
+                        </div>
+
+                        {/* Pins */}
+                        {CHARACTERS.map(char => (
+                            <CharacterPin key={char.id} char={char} onClick={handleCharClick} />
+                        ))}
+                    </div>
+
+                    {/* Selected Character Detail Panel (Bottom Overlay) */}
+                    {selectedChar && !isSealed && (
+                        <div className="bg-white p-4 border-t-4 border-[#6d5a43] flex items-center gap-4 animate-in slide-in-from-bottom duration-300">
+                            <div className="w-16 h-16 border-2 border-black relative" style={{ backgroundColor: selectedChar.color }}>
+                                 <div className="absolute top-4 left-2 w-2 h-4 bg-black"></div>
+                                 <div className="absolute top-4 right-2 w-2 h-4 bg-black"></div>
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="font-pixel text-sm flex items-center gap-2">
+                                    {selectedChar.name}
+                                    {selectedChar.status === 'Ready' && <span className="bg-red-500 text-white text-[8px] px-1 py-0.5 rounded">READY!</span>}
+                                </h3>
+                                <p className="font-handheld text-lg text-gray-600">
+                                    {selectedChar.status === 'Ready' 
+                                      ? "Waiting for orders at base." 
+                                      : `Currently traveling to ${selectedChar.destination}.`}
+                                </p>
+                                {selectedChar.status !== 'Ready' && (
+                                    <div className="w-full bg-gray-200 h-2 mt-2 border border-gray-400 rounded-full overflow-hidden">
+                                        <div className="h-full bg-[#a3e635]" style={{ width: `${selectedChar.progress}%` }}></div>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            {/* Action Button */}
+                            {selectedChar.status === 'Ready' ? (
+                                <button 
+                                    onClick={() => setCurrentView('compose')}
+                                    className="bg-[#ef4444] text-white px-4 py-2 font-pixel text-[10px] pixel-border-sm hover:translate-y-[-2px] hover:shadow-lg animate-bounce-sm"
+                                >
+                                    START QUEST
+                                </button>
+                            ) : (
+                                <button onClick={() => setCurrentView('history')} className="bg-gray-200 text-gray-600 px-4 py-2 font-pixel text-[10px] pixel-border-sm hover:bg-gray-300">
+                                    VIEW LOGS
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* VIEW: HISTORY (Logs) */}
+            {currentView === 'history' && (
+                <div className="flex-1 bg-[#fdfbf7] p-6 relative flex flex-col h-full animate-in fade-in duration-300 overflow-hidden">
+                    <div className="absolute top-0 left-0 right-0 h-8 bg-yellow-100 opacity-20 pointer-events-none"></div>
+                    
+                    <div className="flex items-center gap-4 mb-6 border-b-2 border-dashed border-gray-300 pb-4">
+                        <History size={24} className="text-[#8b7355]" />
+                        <div>
+                            <h2 className="font-handheld text-3xl text-gray-800">Mission Logs</h2>
+                            <p className="font-pixel text-[10px] text-gray-500">
+                                {selectedChar ? `TRACKING: ${selectedChar.name.toUpperCase()}` : 'SELECT A COURIER TO VIEW LOGS'}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto">
+                        {!selectedChar ? (
+                            <div className="h-full flex flex-col items-center justify-center text-gray-400 opacity-50">
+                                <User size={48} className="mb-2" />
+                                <span className="font-pixel text-xs">NO COURIER SELECTED</span>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {selectedChar.history.length === 0 ? (
+                                    <div className="text-center font-handheld text-xl text-gray-400 mt-10">No prior missions recorded.</div>
+                                ) : (
+                                    selectedChar.history.map((log) => (
+                                        <div key={log.id} className="bg-white border-2 border-gray-200 p-4 relative group hover:border-black transition-colors">
+                                            {/* Stamp style date */}
+                                            <div className="absolute -top-3 -right-2 bg-[#a3e635] text-black font-pixel text-[8px] px-2 py-1 rotate-3 border border-black">
+                                                {log.date}
+                                            </div>
+                                            
+                                            <div className="flex gap-4">
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <div className="w-2 h-2 rounded-full bg-gray-300"></div>
+                                                    <div className="w-0.5 h-full bg-gray-300"></div>
+                                                </div>
+                                                <div className="flex-1">
+                                                    <h3 className="font-pixel text-[10px] text-gray-600 mb-1">DESTINATION: {log.location.toUpperCase()}</h3>
+                                                    <div className="font-handheld text-xl mb-2">Delivered to {log.to}</div>
+                                                    <div className="flex gap-2">
+                                                        {log.items.map((item, idx) => (
+                                                            <span key={idx} className="bg-gray-100 px-2 py-1 font-pixel text-[8px] text-gray-500 border border-gray-300 rounded">
+                                                                {item}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* VIEW: COMPOSE (Quest) */}
+            {currentView === 'compose' && selectedChar && (
+                <div className="flex-1 bg-[#fdfbf7] p-8 relative flex flex-col h-full animate-in fade-in zoom-in duration-300">
+                    {/* Watermark */}
+                    <div className="absolute top-0 left-0 right-0 h-8 bg-red-100 opacity-20 pointer-events-none"></div>
+                    
+                    {/* Header with Back Button */}
+                    <div className="flex justify-between items-start mb-6">
+                        <div className="flex items-center gap-4">
+                            <button 
+                                onClick={() => setCurrentView('dashboard')}
+                                className="p-2 border-2 border-gray-300 hover:bg-gray-100 hover:border-black transition-colors"
+                            >
+                                <ArrowLeft size={16} />
+                            </button>
+                            <div>
+                                <div className="font-handheld text-3xl text-gray-800">New Quest</div>
+                                <div className="font-pixel text-[10px] text-green-600 mt-1 flex items-center gap-2">
+                                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                    COURIER {selectedChar.name} IS READY
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Courier Avatar */}
+                        <div className="w-12 h-12 border-2 border-black relative" style={{backgroundColor: selectedChar.color}}>
+                            <div className="absolute top-3 left-2 w-1.5 h-3 bg-black"></div>
+                            <div className="absolute top-3 right-2 w-1.5 h-3 bg-black"></div>
+                            {/* Backpack */}
+                            <div className="absolute bottom-0 w-full h-4 bg-black/20"></div>
+                        </div>
+                    </div>
+
+                    {/* Text Area */}
+                    <textarea 
+                        className="w-full flex-grow bg-transparent border-none resize-none font-handheld text-2xl text-gray-700 focus:outline-none leading-relaxed p-0"
+                        placeholder={`What should ${selectedChar.name} carry to your friend?`}
+                        value={composeMessage}
+                        onChange={(e) => setComposeMessage(e.target.value)}
+                        autoFocus
+                    />
+
+                    {/* Attachments Bar */}
+                    <div className="mt-auto pt-4 border-t-2 border-dashed border-gray-300">
+                        <div className="flex items-center gap-4">
+                            <div className="flex gap-2">
+                                {TOOLS.map(tool => (
+                                    <button 
+                                        key={tool.id}
+                                        onClick={() => tool.id === 'voice' || tool.id === 'drawing' ? setActiveTool(tool.id) : setAttachedItems([...attachedItems, {id: Date.now(), icon: tool.icon, name: tool.name}])}
+                                        className="p-2 bg-gray-100 border border-gray-300 hover:bg-[#a3e635] hover:border-black hover:text-black transition-colors group"
+                                        title={tool.name}
+                                    >
+                                        <div className="group-hover:scale-110 transition-transform">
+                                           {tool.icon}
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="w-px h-8 bg-gray-300"></div>
+                            {/* Attached Items Preview */}
+                            <div className="flex gap-1 overflow-x-auto">
+                                {attachedItems.map((item, i) => (
+                                    <div key={i} className="bg-white border border-black px-2 py-1 flex items-center gap-1 font-pixel text-[8px] animate-in zoom-in">
+                                        {item.icon} {item.name}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Send Button */}
+                        <div className="mt-4 flex justify-end">
+                            <button 
+                                onClick={handleComposeSend}
+                                className={`px-8 py-3 font-pixel text-xs uppercase tracking-widest transition-all
+                                    ${composeMessage ? 'bg-[#ef4444] text-white pixel-border-sm hover:-translate-y-1' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}
+                                `}
+                            >
+                                {isSealed ? 'SEALING...' : 'START QUEST'}
+                            </button>
+                        </div>
+                    </div>
+                    
+                    {/* Sealed Overlay Animation */}
+                    {isSealed && (
+                        <div className="absolute inset-0 bg-[#fdfbf7] z-20 flex flex-col items-center justify-center animate-in fade-in duration-500">
+                             <div className="w-24 h-24 bg-red-600 rounded-full flex items-center justify-center shadow-xl border-4 border-red-800 mb-4 animate-bounce">
+                                <span className="font-handheld text-white text-4xl">♥</span>
+                             </div>
+                             <div className="font-pixel text-sm text-gray-500">DISPATCHING {selectedChar.name.toUpperCase()}...</div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+        </div>
+
+        {/* --- DESK EDGES DECORATION --- */}
+        <div className="absolute -bottom-1 left-4 w-32 h-1 bg-black/20 rounded-full blur-sm z-0"></div>
+      </div>
+      
+      <div className="fixed bottom-2 right-2 font-pixel text-[8px] text-white opacity-30">
+        V4.0 QUEST
+      </div>
+    </div>
+  );
+}

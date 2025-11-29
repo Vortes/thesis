@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -39,6 +40,13 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Custom Dashboard Colors */
+  --color-pixel-bg: var(--pixel-bg);
+  --color-pixel-card: var(--pixel-card);
+  --color-pixel-accent: var(--pixel-accent);
+  --color-pixel-text: var(--pixel-text);
+  --color-pixel-muted: var(--pixel-muted);
 }
 
 :root {
@@ -74,6 +82,13 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Custom Dashboard Colors */
+  --pixel-bg: #8b7355;
+  --pixel-card: #e0d5c1;
+  --pixel-accent: #a3e635;
+  --pixel-text: #4a3b2a;
+  --pixel-muted: #5e4c35;
 }
 
 .dark {
@@ -114,7 +129,100 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+}
+
+@layer utilities {
+  .font-pixel {
+    font-family: 'Press Start 2P', cursive;
+  }
+
+  .font-handheld {
+    font-family: 'VT323', monospace;
+  }
+
+  .pixel-border {
+    box-shadow:
+      -4px 0 0 0 black,
+      4px 0 0 0 black,
+      0 -4px 0 0 black,
+      0 4px 0 0 black;
+  }
+
+  .pixel-border-sm {
+    box-shadow:
+      -2px 0 0 0 black,
+      2px 0 0 0 black,
+      0 -2px 0 0 black,
+      0 2px 0 0 black;
+  }
+
+  .pixel-corners {
+    clip-path: polygon(0px 4px, 4px 4px, 4px 0px,
+        calc(100% - 4px) 0px, calc(100% - 4px) 4px, 100% 4px,
+        100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%,
+        4px 100%, 4px calc(100% - 4px), 0px calc(100% - 4px));
+  }
+
+  .map-pattern {
+    background-color: #e5e7eb;
+    background-image:
+      linear-gradient(#fff 2px, transparent 2px),
+      linear-gradient(90deg, #fff 2px, transparent 2px);
+    background-size: 40px 40px;
+  }
+}
+
+/* Animations */
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-5px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes bounce-sm {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-bounce-sm {
+  animation: bounce-sm 1s infinite;
 }

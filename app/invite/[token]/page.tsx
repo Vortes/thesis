@@ -107,5 +107,5 @@ export default async function InvitePage({ params }: InvitePageProps) {
   });
 
   // Redirect to dashboard
-  redirect("/dashboard");
+  redirect("/");
 }

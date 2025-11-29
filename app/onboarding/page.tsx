@@ -7,13 +7,16 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { MapPin, Mail, CheckCircle2, Loader2 } from "lucide-react"
+import { MapPin, Mail, Loader2 } from "lucide-react"
 import { useMutation } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
+import { completeOnboarding } from "@/app/actions/onboarding"
+import { updateUserLocation } from "@/app/actions/user"
 
 export default function OnboardingPage() {
   const [step, setStep] = useState(1)
-  const [progress, setProgress] = useState(33)
+  const [progress, setProgress] = useState(50)
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false)
   const [email, setEmail] = useState("")
   const router = useRouter()
@@ -23,19 +26,24 @@ export default function OnboardingPage() {
   }
 
   const confirmLocation = () => {
-    // Simulate location request
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         console.log("Location access granted", position)
-        setIsLocationDialogOpen(false)
-        setStep(2)
-        setProgress(66)
+        try {
+          await updateUserLocation(position.coords.latitude, position.coords.longitude)
+          setIsLocationDialogOpen(false)
+          setStep(2)
+          setProgress(100)
+          toast.success("Location saved successfully!")
+        } catch (error) {
+          console.error("Failed to save location", error)
+          toast.error("Failed to save location. Please try again.")
+        }
       },
       (error) => {
         console.error("Location access denied", error)
-        // Handle error or re-prompt - for now just close dialog
         setIsLocationDialogOpen(false)
-        // Ideally show an error message or retry
+        toast.error("Location access denied. Please enable it in your browser settings.")
       }
     )
   }
@@ -54,18 +62,32 @@ export default function OnboardingPage() {
       return res.json()
     },
     onSuccess: () => {
-      setStep(3)
-      setProgress(100)
+      toast.success("Invitation sent successfully!")
+      setEmail("")
     },
     onError: (error) => {
       console.error("Invite error:", error)
-      alert("Failed to send invite: " + error.message)
+      toast.error("Failed to send invite: " + error.message)
     },
   })
 
   const handleInviteSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     inviteMutation.mutate(email)
+  }
+
+  const handleFinish = async () => {
+    try {
+      await completeOnboarding()
+      // Redirect is handled in server action via revalidatePath/redirect or client side
+      // Since server action is void, we might need to redirect here if not handled there
+      // But revalidatePath("/") usually refreshes. 
+      // Actually, server action didn't have redirect, so let's do it here.
+      router.push("/")
+    } catch (error) {
+      console.error("Finish error:", error)
+      toast.error("Something went wrong.")
+    }
   }
 
   return (
@@ -140,7 +162,7 @@ export default function OnboardingPage() {
                   </div>
                 </form>
               </CardContent>
-              <CardFooter>
+              <CardFooter className="flex flex-col gap-3">
                 <Button type="submit" form="invite-form" className="w-full" disabled={inviteMutation.isPending}>
                   {inviteMutation.isPending ? (
                     <>
@@ -151,30 +173,8 @@ export default function OnboardingPage() {
                     "Send Invite"
                   )}
                 </Button>
-              </CardFooter>
-            </>
-          )}
-
-          {step === 3 && (
-            <>
-              <CardHeader className="text-center">
-                <div className="mx-auto bg-green-100 p-3 rounded-full w-fit mb-4">
-                  <CheckCircle2 className="w-8 h-8 text-green-600" />
-                </div>
-                <CardTitle className="text-2xl">Messenger Assigned!</CardTitle>
-                <CardDescription>
-                  Great news! Your messenger pet has been assigned and is ready to go.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="text-center space-y-4">
-                <div className="p-6 bg-slate-50 rounded-lg border border-slate-100">
-                  <p className="font-medium text-slate-900">Your Pet: 🦉 Oliver the Owl</p>
-                  <p className="text-sm text-slate-500">Oliver is fast and wise!</p>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button className="w-full" onClick={() => router.push("/dashboard")}>
-                  Go to Dashboard
+                <Button variant="outline" className="w-full" onClick={handleFinish}>
+                  Finish & Go to Dashboard
                 </Button>
               </CardFooter>
             </>
