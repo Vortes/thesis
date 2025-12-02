@@ -1,4 +1,4 @@
-import { Compose } from '@/components/dashboard/Compose';
+import { Compose } from '@/components/dashboard/compose/Compose';
 import { fetchMessengers } from '@/app/utils/fetch-messengers';
 import { redirect } from 'next/navigation';
 

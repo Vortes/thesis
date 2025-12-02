@@ -1,4 +1,4 @@
-import { History } from '@/components/dashboard/History';
+import { History } from '@/components/dashboard/history/History';
 import { fetchMessengers } from '@/app/utils/fetch-messengers';
 import { redirect } from 'next/navigation';
 

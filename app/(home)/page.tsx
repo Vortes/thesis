@@ -1,4 +1,4 @@
-import { Map } from '@/components/dashboard/Map';
+import { Map } from '@/components/dashboard/map/Map';
 import { fetchMessengers } from '@/app/utils/fetch-messengers';
 
 export default async function Home({
