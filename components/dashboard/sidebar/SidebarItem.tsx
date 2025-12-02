@@ -5,7 +5,7 @@ import { Character } from '@/lib/dashboard-data';
 interface SidebarItemProps {
     char: Character;
     isSelected: boolean;
-    onClick: (char: Character) => void;
+    onClick: () => void;
 }
 
 export const SidebarItem: React.FC<SidebarItemProps> = ({ char, isSelected, onClick }) => {
@@ -13,7 +13,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({ char, isSelected, onCl
     
     return (
         <button 
-            onClick={() => onClick(char)}
+            onClick={onClick}
             className={`w-full p-3 flex items-center gap-3 text-left pixel-border-sm transition-all group relative overflow-visible hover:cursor-pointer
                 ${isSelected 
                     ? 'bg-pixel-accent text-black -translate-y-1' 
