@@ -10,6 +10,7 @@ import { LetterArea } from './LetterArea';
 import { Toolkit } from './Toolkit';
 import { SendingView } from './SendingView';
 import { SentView } from './SentView';
+import { useUploadThing } from '@/lib/uploadthing';
 
 interface ComposeProps {
     selectedChar: Character;
@@ -39,14 +40,38 @@ export const Compose = () => {
         }
     }, [isSealed, view]);
 
+    const { startUpload } = useUploadThing('textUploader', {
+        onClientUploadComplete: async res => {
+            if (!res || res.length === 0) {
+                setIsSealed(false);
+                return;
+            }
+
+            const serverData = res[0].serverData;
+
+            if (serverData.success) {
+                setTimeout(() => {
+                    setComposeMessage('');
+                    setAttachedItems([]);
+                    setIsSealed(false);
+                    router.push('/');
+                }, 2500);
+            } else {
+                setIsSealed(false);
+            }
+        },
+        onUploadError: error => {
+            setIsSealed(false);
+        }
+    });
+
     const handleComposeSend = () => {
         setIsSealed(true);
-        setTimeout(() => {
-            setComposeMessage('');
-            setAttachedItems([]);
-            setIsSealed(false);
-            router.push('/');
-        }, 2500);
+
+        const textFile = new File([composeMessage], 'message.txt', { type: 'text/plain' });
+        const recipientId = 'user_3675L8LSf0d96hZ7p52OVoh7TVj';
+
+        startUpload([textFile], { recipientId });
     };
 
     const handleToolClick = (toolId: string) => {
@@ -70,10 +95,6 @@ export const Compose = () => {
 
     const removeItem = (id: number) => {
         setAttachedItems(attachedItems.filter(i => i.id !== id));
-    };
-
-    const handleSendClick = () => {
-        handleComposeSend();
     };
 
     return (
@@ -119,7 +140,7 @@ export const Compose = () => {
                             <Toolkit
                                 onToolClick={handleToolClick}
                                 attachedItemsCount={attachedItems.length}
-                                onSend={handleSendClick}
+                                onSend={handleComposeSend}
                                 canSend={composeMessage.length > 0}
                                 isSealed={isSealed}
                             />

@@ -45,21 +45,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ sortedChars }) => {
                         <UserButton />
                     </SignedIn>
                 </div>
-                {/* <div className="flex gap-2 mt-2">
-                    <Link 
-                        href="/"
-                        className={`flex-1 py-2 text-center font-pixel text-[8px] pixel-border-sm transition-all bg-pixel-card text-[#5e4c35]`}
-                    >
-                        MAP
-                    </Link>
-                    <Link 
-                        href={selectedCharId ? `/${selectedCharId}/history` : '#'}
-                        className={`flex-1 py-2 text-center font-pixel text-[8px] pixel-border-sm transition-all bg-pixel-card text-[#5e4c35] ${!selectedCharId ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        onClick={(e) => !selectedCharId && e.preventDefault()}
-                    >
-                        HISTORY
-                    </Link>
-                </div> */}
             </div>
 
             {/* Character Roster */}

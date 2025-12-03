@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { TOOLS } from '@/lib/dashboard-data';
 
@@ -20,7 +22,7 @@ export const Toolkit: React.FC<ToolkitProps> = ({ onToolClick, attachedItemsCoun
                 TOOLKIT
             </div>
 
-            <div className="flex flex-col gap-2 flex-1">
+            <div className="flex flex-col gap-2 flex-1 ">
                 {TOOLS.map(tool => {
                     const isDisabled = attachedItemsCount >= 3;
                     return (
@@ -29,7 +31,7 @@ export const Toolkit: React.FC<ToolkitProps> = ({ onToolClick, attachedItemsCoun
                             onClick={() => onToolClick(tool.id)}
                             disabled={isDisabled}
                             className={`
-                p-3 text-left flex items-center gap-3 transition-all pixel-border-sm group w-full
+                p-3 text-left flex items-center gap-3 transition-all pixel-border-sm group w-full hover:cursor-pointer
                 ${
                     isDisabled
                         ? 'bg-[#5e4c35] opacity-50 cursor-not-allowed'
