@@ -3,6 +3,7 @@ import { Mic, Link as LinkIcon, Image as ImageIcon, PenTool } from 'lucide-react
 
 export interface Character {
     id: number | string;
+    recipientId: string;
     name: string;
     status: 'Ready' | 'En Route' | 'Delivered';
     destination: string;

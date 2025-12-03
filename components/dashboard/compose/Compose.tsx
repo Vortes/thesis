@@ -16,7 +16,7 @@ interface ComposeProps {
     selectedChar: Character;
 }
 
-export const Compose = () => {
+export const Compose = ({ selectedChar }: ComposeProps) => {
     const router = useRouter();
     // State moved from Dashboard
     const [composeMessage, setComposeMessage] = useState('');
@@ -40,7 +40,7 @@ export const Compose = () => {
         }
     }, [isSealed, view]);
 
-    const { startUpload } = useUploadThing('textUploader', {
+    const { startUpload } = useUploadThing('shipmentUploader', {
         onClientUploadComplete: async res => {
             if (!res || res.length === 0) {
                 setIsSealed(false);
@@ -69,7 +69,7 @@ export const Compose = () => {
         setIsSealed(true);
 
         const textFile = new File([composeMessage], 'message.txt', { type: 'text/plain' });
-        const recipientId = 'user_3675L8LSf0d96hZ7p52OVoh7TVj';
+        const recipientId = selectedChar.recipientId;
 
         startUpload([textFile], { recipientId });
     };

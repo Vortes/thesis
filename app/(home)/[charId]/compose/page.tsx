@@ -11,5 +11,5 @@ export default async function ComposePage({ params }: { params: Promise<{ charId
         redirect('/');
     }
 
-    return <Compose />;
+    return <Compose selectedChar={selectedChar} />;
 }
