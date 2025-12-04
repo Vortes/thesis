@@ -18,7 +18,7 @@ export async function createShipment(recipientId: string, items: CreateShipmentI
 
     try {
         await prisma.$transaction(async tx => {
-            const shipment = await tx.shipment.create({
+            await tx.shipment.create({
                 data: {
                     senderId: userId,
                     recipientId,

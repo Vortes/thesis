@@ -22,7 +22,6 @@ interface ComposeProps {
 
 export const Compose = ({ selectedChar }: ComposeProps) => {
     const router = useRouter();
-    // State moved from Dashboard
     const [composeMessage, setComposeMessage] = useState('');
     const [attachedItems, setAttachedItems] = useState<any[]>([]);
     const [isSealed, setIsSealed] = useState(false);
