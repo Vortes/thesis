@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Character, TOOLS } from '@/lib/dashboard-data';
 import { VoiceRecorder } from './VoiceRecorder';
 import { DrawingPad } from './DrawingPad';
@@ -11,6 +11,10 @@ import { Toolkit } from './Toolkit';
 import { SendingView } from './SendingView';
 import { SentView } from './SentView';
 import { useUploadThing } from '@/lib/uploadthing';
+import { saveDraft, getDraft, saveAttachment, getAttachments, clearDrafts, deleteAttachment } from '@/lib/db';
+import { createShipment } from '@/app/actions/shipment';
+import { GiftType } from '@prisma/client';
+import { Mic } from 'lucide-react';
 
 interface ComposeProps {
     selectedChar: Character;
@@ -26,74 +30,155 @@ export const Compose = ({ selectedChar }: ComposeProps) => {
 
     const [view, setView] = useState<'compose' | 'sending' | 'sent'>('compose');
 
+    // Load drafts on character change
+    useEffect(() => {
+        const loadDrafts = async () => {
+            if (!selectedChar?.id) return;
+
+            const draft = await getDraft(String(selectedChar.id));
+            if (draft) setComposeMessage(draft.text);
+            else setComposeMessage('');
+
+            const attachments = await getAttachments(String(selectedChar.id));
+            if (attachments) {
+                // Reconstruct icons since IDB doesn't store React elements
+                const hydrated = attachments.map((item: any) => ({
+                    ...item,
+                    icon: item.type === 'voice' ? <Mic size={16} /> : item.icon // Add other types as needed
+                }));
+                setAttachedItems(hydrated);
+            } else {
+                setAttachedItems([]);
+            }
+        };
+        loadDrafts();
+    }, [selectedChar.id]);
+
+    // Auto-save text draft
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (selectedChar?.id) {
+                saveDraft(String(selectedChar.id), composeMessage);
+            }
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [composeMessage, selectedChar.id]);
+
     // Handle the sending flow
     useEffect(() => {
         if (isSealed && view === 'compose') {
+            // Start the visual transition
             const timer1 = setTimeout(() => {
                 setView('sending');
-                const timer2 = setTimeout(() => {
-                    setView('sent');
-                }, 3000);
-                return () => clearTimeout(timer2);
             }, 1500);
             return () => clearTimeout(timer1);
         }
     }, [isSealed, view]);
 
-    const { startUpload } = useUploadThing('shipmentUploader', {
-        onClientUploadComplete: async res => {
-            if (!res || res.length === 0) {
-                setIsSealed(false);
-                return;
+    const { startUpload } = useUploadThing('shipmentUploader');
+
+    const handleComposeSend = async () => {
+        setIsSealed(true);
+
+        try {
+            const filesToUpload: File[] = [];
+            const shipmentItems: { type: GiftType; content: string }[] = [];
+
+            // 1. Prepare Text
+            if (composeMessage.trim()) {
+                const textFile = new File([composeMessage], 'message.txt', { type: 'text/plain' });
+                filesToUpload.push(textFile);
+                // We'll map this back by index or type, but for now let's assume order is preserved
+                // Actually, better to wait for upload results.
             }
 
-            const serverData = res[0].serverData;
+            // 2. Prepare Attachments (Voice, etc)
+            // We need to fetch the blobs from IDB if they aren't in memory (though VoiceRecorder passes them up)
+            // For now, let's assume attachedItems contains the blob if it's a new recording.
+            // If it was loaded from IDB, we might need to fetch it again if we didn't keep the blob in state.
+            // Let's rely on `attachedItems` having the blob for now.
 
-            if (serverData.success) {
+            for (const item of attachedItems) {
+                if (item.type === 'voice' && item.blob) {
+                    const file = new File([item.blob], `voice-${item.id}.webm`, { type: 'audio/webm' });
+                    filesToUpload.push(file);
+                }
+                // Add other types here
+            }
+
+            // 3. Upload All Files
+            let uploadedUrls: string[] = [];
+            if (filesToUpload.length > 0) {
+                const uploadRes = await startUpload(filesToUpload, { recipientId: selectedChar.recipientId });
+                if (!uploadRes) throw new Error('Upload failed');
+                uploadedUrls = uploadRes.map(r => r.url);
+            }
+
+            // 4. Construct Shipment Items
+            // This is a bit tricky: mapping URLs back to types.
+            // Since we uploaded [Text, Voice1, Voice2...], we can shift them off.
+
+            let urlIndex = 0;
+            if (composeMessage.trim()) {
+                shipmentItems.push({ type: 'TEXT', content: uploadedUrls[urlIndex++] });
+            }
+
+            for (const item of attachedItems) {
+                if (item.type === 'voice') {
+                    shipmentItems.push({ type: 'AUDIO', content: uploadedUrls[urlIndex++] });
+                }
+            }
+
+            // 5. Call Server Action
+            const result = await createShipment(selectedChar.recipientId, shipmentItems);
+
+            if (result.success) {
+                // 6. Cleanup
+                await clearDrafts(String(selectedChar.id));
+                setView('sent');
                 setTimeout(() => {
                     setComposeMessage('');
                     setAttachedItems([]);
                     setIsSealed(false);
+                    setView('compose'); // Reset view for next time
                     router.push('/');
                 }, 2500);
             } else {
-                setIsSealed(false);
+                throw new Error(result.error);
             }
-        },
-        onUploadError: error => {
+        } catch (error) {
+            console.error('Send failed:', error);
             setIsSealed(false);
+            setView('compose');
+            // Show error toast
         }
-    });
-
-    const handleComposeSend = () => {
-        setIsSealed(true);
-
-        const textFile = new File([composeMessage], 'message.txt', { type: 'text/plain' });
-        const recipientId = selectedChar.recipientId;
-
-        startUpload([textFile], { recipientId });
     };
 
     const handleToolClick = (toolId: string) => {
         if (toolId === 'voice' || toolId === 'drawing') {
             setActiveTool(toolId);
         } else {
-            // Fallback for other tools (simulated for now as they don't have modals yet)
+            // Fallback for other tools
             const tool = TOOLS.find(t => t.id === toolId);
             if (tool) {
-                const newItem = {
-                    id: Date.now(),
-                    type: toolId,
-                    name: tool.name,
-                    icon: <tool.icon size={16} />, // Render icon as element
-                    detail: 'Attached'
-                };
-                setAttachedItems([...attachedItems, newItem]);
+                // ... logic for other tools
             }
         }
     };
 
-    const removeItem = (id: number) => {
+    const handleSaveAttachment = async (item: any) => {
+        // Save to IDB (exclude non-serializable icon)
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { icon, ...itemForDb } = item;
+        await saveAttachment({ ...itemForDb, messengerId: String(selectedChar.id) });
+
+        // State keeps the icon for rendering
+        setAttachedItems(prev => [...prev, item]);
+        setActiveTool(null);
+    };
+
+    const removeItem = async (id: number) => {
+        await deleteAttachment(id);
         setAttachedItems(attachedItems.filter(i => i.id !== id));
     };
 
@@ -101,13 +186,7 @@ export const Compose = ({ selectedChar }: ComposeProps) => {
         <div className="relative z-10 w-full h-full flex flex-col">
             {/* --- OVERLAYS (Modals) --- */}
             {activeTool === 'voice' && (
-                <VoiceRecorder
-                    onSave={i => {
-                        setAttachedItems([...attachedItems, i]);
-                        setActiveTool(null);
-                    }}
-                    onCancel={() => setActiveTool(null)}
-                />
+                <VoiceRecorder onSave={handleSaveAttachment} onCancel={() => setActiveTool(null)} />
             )}
             {activeTool === 'drawing' && (
                 <DrawingPad

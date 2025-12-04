@@ -22,38 +22,13 @@ export const ourFileRouter = {
             return { userId, recipientId: input.recipientId };
         })
         .onUploadComplete(async ({ metadata, file }) => {
-            try {
-                const shipment = await prisma.shipment.create({
-                    data: {
-                        senderId: metadata.userId,
-                        recipientId: metadata.recipientId,
-                        status: 'DRAFTING',
-                        items: {
-                            create: [
-                                {
-                                    type: 'TEXT',
-                                    content: file.url
-                                }
-                            ]
-                        }
-                    }
-                });
-
-                return {
-                    uploadedBy: metadata.userId,
-                    shipmentId: shipment.id,
-                    success: true
-                };
-            } catch (error) {
-                console.error('[textUploader] ❌ Error creating shipment:', error);
-                // We can't really return an error to the client in the same way here,
-                // but we can return success: false
-                return {
-                    uploadedBy: metadata.userId,
-                    success: false,
-                    error: 'Failed to create shipment'
-                };
-            }
+            // We NO LONGER create the shipment here.
+            // The client will collect all URLs and call the createShipment server action.
+            return {
+                uploadedBy: metadata.userId,
+                url: file.url,
+                success: true
+            };
         })
 } satisfies FileRouter;
 
