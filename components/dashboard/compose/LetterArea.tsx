@@ -50,38 +50,12 @@ export const LetterArea: React.FC<LetterAreaProps> = ({
                         <span className="font-handheld text-xl text-gray-400 italic w-full text-center">Empty...</span>
                     )}
                     {attachedItems.map(item => (
-                        <div key={item.id} className="relative group animate-in zoom-in duration-300">
-                            <button
-                                onClick={e => {
-                                    e.stopPropagation();
-                                    onRemoveItem(item.id);
-                                }}
-                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:cursor-pointer"
-                            >
-                                <X size={12} />
-                            </button>
-                            <div
-                                onClick={() => {
-                                    if (item.type === 'voice' && item.blob) {
-                                        const audio = new Audio(URL.createObjectURL(item.blob));
-                                        audio.play();
-                                    }
-                                }}
-                                className={`bg-white border-2 border-black p-2 flex flex-col items-center gap-1 shadow-md w-20 h-20 justify-center ${
-                                    item.type === 'voice'
-                                        ? 'hover:bg-gray-100 hover:cursor-pointer active:scale-95 transition-transform'
-                                        : ''
-                                }`}
-                            >
-                                <span className="text-gray-800">{item.icon}</span>
-                                <span className="font-pixel text-[8px] text-center leading-tight truncate w-full">
-                                    {item.detail}
-                                </span>
-                            </div>
-                        </div>
+                        <AttachmentItem key={item.id} item={item} onRemove={onRemoveItem} />
                     ))}
                 </div>
             </div>
         </div>
     );
 };
+
+import { AttachmentItem } from './AttachmentItem';

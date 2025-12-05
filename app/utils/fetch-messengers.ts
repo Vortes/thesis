@@ -10,6 +10,11 @@ export const fetchMessengers = async () => {
     if (!user) {
         redirect('/sign-in');
     }
+    console.log('fetching messengers');
+    //simulate slow response
+    await new Promise(resolve => setTimeout(resolve, 5000));
+
+    console.log('Currently refetching user again!');
 
     const dbUser = await prisma.user.findUnique({
         where: { email: user.emailAddresses[0].emailAddress },
