@@ -1,7 +1,6 @@
 import '../globals.css';
 
 import { Suspense } from 'react';
-import { Sidebar } from '@/components/dashboard/sidebar/Sidebar';
 import { SidebarLoader } from '@/components/dashboard/sidebar/SidebarLoader';
 import { SidebarSkeleton } from '@/components/dashboard/sidebar/SidebarSkeleton';
 
