@@ -1,4 +1,3 @@
-'use client';
 import React from 'react';
 import { Loader2, Headphones, Image as ImageIcon } from 'lucide-react';
 import { Character } from '@/lib/dashboard-data';
@@ -26,7 +25,7 @@ export const LetterDetailView: React.FC<LetterDetailViewProps> = ({
     };
 
     return (
-        <div className="max-w-2xl mx-auto animate-in zoom-in duration-300 relative z-10">
+        <div className="max-w-3xl mx-auto animate-in zoom-in duration-300 relative z-10">
             <div
                 className="bg-white p-8 pixel-border shadow-xl relative min-h-[500px] flex flex-col"
                 style={{
@@ -35,11 +34,6 @@ export const LetterDetailView: React.FC<LetterDetailViewProps> = ({
                     backgroundPosition: '0 60px'
                 }}
             >
-                {/* Paper Decor - Wax Seal */}
-                <div className="absolute -top-3 -right-3 w-12 h-12 bg-red-100 rotate-12 pixel-border-sm flex items-center justify-center border border-red-200">
-                    <div className="w-8 h-8 rounded-full border-2 border-red-300" />
-                </div>
-
                 {/* Letter Header */}
                 <div className="border-b-2 border-dashed border-gray-300 pb-4 mb-6 flex justify-between items-end">
                     <div>

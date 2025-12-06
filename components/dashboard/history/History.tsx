@@ -54,14 +54,11 @@ export const History: React.FC<HistoryProps> = ({ selectedChar, shipments = [] }
             {/* Header */}
             <div className="bg-[#e0d5c1] p-4 border-b-4 border-[#8b7355] flex items-center justify-between z-10">
                 <div className="flex items-center gap-4">
-                    <button
-                        onClick={() => (viewingShipment ? setViewingShipment(null) : router.back())}
-                        className="p-2 hover:bg-[#8b7355]/20 rounded transition-colors"
-                    >
+                    <div className="p-2 rounded transition-colors">
                         <HistoryIcon size={24} className="text-[#5e4c35]" />
-                    </button>
+                    </div>
                     <div>
-                        <h2 className="font-pixel text-xs text-[#5e4c35]">ARCHIVE ROOM</h2>
+                        <h2 className="font-pixel text-xs text-[#5e4c35]">SHIPMENT HISTORY</h2>
                         <p className="font-handheld text-xl text-gray-600">
                             {viewingShipment
                                 ? `LOG #${viewingShipment.id.slice(-4)}`
@@ -110,7 +107,7 @@ export const History: React.FC<HistoryProps> = ({ selectedChar, shipments = [] }
                     />
                 ) : (
                     /* --- LOG LIST VIEW --- */
-                    <div className="grid grid-cols-1 gap-4 max-w-3xl mx-auto relative z-10">
+                    <div className="grid grid-cols-1 gap-4 mx-auto relative z-10">
                         {shipments.length === 0 ? (
                             <div className="text-center font-handheld text-xl text-gray-500 mt-20">
                                 No archives found.
