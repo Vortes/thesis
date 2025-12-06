@@ -1,0 +1,60 @@
+# History Component UI Refactoring Notes
+Date: 2025-12-05
+
+## What Was Done
+Refactored the `/components/dashboard/history/History.tsx` component to improve the UI for reading letters from messenger history.
+
+## Key Files
+- `components/dashboard/history/History.tsx` - Main history component with two-view pattern
+- `components/dashboard/history/LetterReader.tsx` - Created but may be unused (inline view preferred)
+- `code.txt` - User's design reference file containing target styling patterns
+
+## User's Design Preferences
+
+### Overall Aesthetic
+- Retro pixel/handheld game style
+- Uses `font-pixel` (Press Start 2P) for labels/headers
+- Uses `font-handheld` (VT323) for content text
+- Color palette: browns (#8b7355, #5e4c35, #e0d5c1), cream (#fdfbf7, #f0e6d2), accent green (#a3e635)
+- Uses `pixel-border` and `pixel-border-sm` utility classes for chunky borders
+
+### History Page Structure (User's Vision)
+1. **LIST VIEW** (default): Shows shipment cards in folder-tab style
+   - Folder tab decoration at top-left
+   - Brown "LOG #XXXX" badge
+   - Date and "Delivery to [name]"
+   - Icons showing attachment types (mic, image, pen)
+   - Green "OPEN" button
+   - Hover effect: `-translate-y-1` lift
+
+2. **DETAIL VIEW** (when clicking into a shipment): Full paper letter view
+   - Header with "ARCHIVE ROOM" title and "BACK TO LIST" button
+   - White paper container with `pixel-border` and shadow
+   - Red wax seal decoration (rotated square with circle inside)
+   - Dashed border header with "TO:" and date
+   - **IMPORTANT**: Notebook ruled lines on the paper (user nitpicked this)
+   - Letter content displayed inline (fetched from URL)
+   - "Attached Evidence" section at bottom showing all items
+
+### Nitpicks / Specific Requirements
+1. User did NOT want attachments expanded in the list view - only show them in detail view
+2. User specifically wanted the ruled notebook lines on the letter paper
+3. Background pattern in content area: radial gradient dots (#8b7355 1px circles, 20px spacing)
+4. Audio player should have a retro dark style with green waveform/progress bar
+
+## Styling Reference (from code.txt)
+The user provided code.txt as the styling reference. Key patterns:
+- Header: `bg-[#e0d5c1] p-4 border-b-4 border-[#8b7355]`
+- Content: `bg-[#f0e6d2]` with dot pattern overlay
+- Paper: `bg-white pixel-border shadow-xl` with ruled lines:
+  ```css
+  backgroundImage: 'repeating-linear-gradient(transparent, transparent 31px, #e5e7eb 31px, #e5e7eb 32px)'
+  backgroundPosition: '0 60px'
+  ```
+- Cards: `bg-[#fdfbf7] pixel-border-sm hover:-translate-y-1 hover:shadow-lg`
+
+## Data Flow
+- `selectedChar`: Character object with messenger info
+- `shipments`: Array of Shipment objects with nested `items: GiftItem[]`
+- GiftItem types: 'TEXT' (URL to fetch), 'AUDIO' (audio URL), 'PHOTO' (image URL)
+- TEXT content is stored as a URL from uploadthing - must fetch to display

@@ -1,9 +1,11 @@
 'use client';
-import React from 'react';
-import { History as HistoryIcon, User, ChevronLeft, Package } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { History as HistoryIcon, User, ArrowLeft } from 'lucide-react';
 import { Character } from '@/lib/dashboard-data';
 import { useRouter } from 'next/navigation';
 import { Shipment, GiftItem } from '@prisma/client';
+import { ShipmentCard } from './ShipmentCard';
+import { LetterDetailView } from './LetterDetailView';
 
 interface HistoryProps {
     selectedChar: Character | null;
@@ -12,132 +14,115 @@ interface HistoryProps {
 
 export const History: React.FC<HistoryProps> = ({ selectedChar, shipments = [] }) => {
     const router = useRouter();
+    const [viewingShipment, setViewingShipment] = useState<(Shipment & { items: GiftItem[] }) | null>(null);
+    const [letterContent, setLetterContent] = useState<string | null>(null);
+    const [loadingLetter, setLoadingLetter] = useState(false);
 
-    const formatDate = (date: Date) => {
-        return new Date(date).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: 'numeric'
-        });
-    };
+    // Fetch letter content when viewing a shipment
+    useEffect(() => {
+        const fetchLetter = async () => {
+            if (!viewingShipment) {
+                setLetterContent(null);
+                return;
+            }
+
+            const textItem = viewingShipment.items.find(i => i.type === 'TEXT');
+            if (!textItem) {
+                setLetterContent(null);
+                return;
+            }
+
+            try {
+                setLoadingLetter(true);
+                const response = await fetch(textItem.content);
+                if (!response.ok) throw new Error('Failed to load');
+                const text = await response.text();
+                setLetterContent(text);
+            } catch (err) {
+                console.error('Error fetching letter:', err);
+                setLetterContent('Could not load letter content.');
+            } finally {
+                setLoadingLetter(false);
+            }
+        };
+
+        fetchLetter();
+    }, [viewingShipment]);
 
     return (
-        <div className="flex-1 bg-[#fdfbf7] p-6 relative flex flex-col h-full animate-in fade-in duration-300 overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-8 bg-yellow-100 opacity-20 pointer-events-none"></div>
-
-            <div className="flex items-center gap-4 mb-6 border-b-2 border-dashed border-gray-300 pb-4">
-                <button
-                    onClick={() => router.back()}
-                    className="flex items-center gap-1 text-gray-500 hover:text-black transition-colors group mr-2 hover:cursor-pointer"
-                >
-                    <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-                </button>
-
-                <HistoryIcon size={24} className="text-[#8b7355]" />
-                <div>
-                    <h2 className="font-handheld text-3xl text-gray-800">Mission Logs</h2>
-                    <p className="font-pixel text-[10px] text-gray-500">
-                        {selectedChar
-                            ? `TRACKING: ${selectedChar.name.toUpperCase()}`
-                            : 'SELECT A COURIER TO VIEW LOGS'}
-                    </p>
+        <div className="flex-1 bg-[#fdfbf7] relative flex flex-col h-full animate-in fade-in duration-300 overflow-hidden">
+            {/* Header */}
+            <div className="bg-[#e0d5c1] p-4 border-b-4 border-[#8b7355] flex items-center justify-between z-10">
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => (viewingShipment ? setViewingShipment(null) : router.back())}
+                        className="p-2 hover:bg-[#8b7355]/20 rounded transition-colors"
+                    >
+                        <HistoryIcon size={24} className="text-[#5e4c35]" />
+                    </button>
+                    <div>
+                        <h2 className="font-pixel text-xs text-[#5e4c35]">ARCHIVE ROOM</h2>
+                        <p className="font-handheld text-xl text-gray-600">
+                            {viewingShipment
+                                ? `LOG #${viewingShipment.id.slice(-4)}`
+                                : selectedChar
+                                ? `${selectedChar.name}'s Missions`
+                                : 'All Archives'}
+                        </p>
+                    </div>
                 </div>
+                {viewingShipment && (
+                    <button
+                        onClick={() => setViewingShipment(null)}
+                        className="flex items-center gap-2 font-pixel text-[10px] bg-[#8b7355] text-white px-3 py-2 pixel-border-sm hover:bg-[#5e4c35] transition-colors"
+                    >
+                        <ArrowLeft size={10} /> BACK TO LIST
+                    </button>
+                )}
             </div>
 
-            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+            {/* Content Area */}
+            <div className="flex-1 overflow-y-auto bg-[#f0e6d2] p-6 relative custom-scrollbar">
+                <div
+                    className="absolute inset-0 opacity-10 pointer-events-none"
+                    style={{
+                        backgroundImage: 'radial-gradient(#8b7355 1px, transparent 1px)',
+                        backgroundSize: '20px 20px'
+                    }}
+                />
+
                 {!selectedChar ? (
-                    <div className="h-full flex flex-col items-center justify-center text-gray-400 opacity-50">
-                        <User size={48} className="mb-2" />
-                        <span className="font-pixel text-xs">NO COURIER SELECTED</span>
+                    <div className="h-full flex flex-col items-center justify-center text-gray-500 opacity-60">
+                        <User size={64} className="mb-4 text-[#8b7355]" />
+                        <span className="font-pixel text-xs text-center">
+                            SELECT A COURIER
+                            <br />
+                            TO OPEN THEIR FILES
+                        </span>
                     </div>
+                ) : viewingShipment ? (
+                    /* --- SINGLE LETTER VIEW --- */
+                    <LetterDetailView
+                        shipment={viewingShipment}
+                        selectedChar={selectedChar}
+                        letterContent={letterContent}
+                        loadingLetter={loadingLetter}
+                    />
                 ) : (
-                    <div className="space-y-6">
+                    /* --- LOG LIST VIEW --- */
+                    <div className="grid grid-cols-1 gap-4 max-w-3xl mx-auto relative z-10">
                         {shipments.length === 0 ? (
-                            <div className="text-center font-handheld text-xl text-gray-400 mt-10">
-                                No delivered shipments found.
+                            <div className="text-center font-handheld text-xl text-gray-500 mt-20">
+                                No archives found.
                             </div>
                         ) : (
                             shipments.map(shipment => (
-                                <div
+                                <ShipmentCard
                                     key={shipment.id}
-                                    className="bg-white border-2 border-gray-200 p-4 relative group hover:border-black transition-colors rounded-sm"
-                                >
-                                    {/* Stamp style date */}
-                                    <div className="absolute -top-3 -right-2 bg-pixel-accent text-black font-pixel text-[8px] px-2 py-1 rotate-3 border border-black shadow-sm">
-                                        {formatDate(shipment.createdAt)}
-                                    </div>
-
-                                    <div className="flex gap-4">
-                                        <div className="flex flex-col items-center gap-1 pt-2">
-                                            <div className="w-3 h-3 rounded-full bg-gray-300 border border-gray-400"></div>
-                                            <div className="w-0.5 h-full bg-gray-200 dashed-line"></div>
-                                        </div>
-                                        <div className="flex-1 pb-2">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <Package size={14} className="text-gray-400" />
-                                                <span className="font-pixel text-[10px] text-gray-500 uppercase tracking-wider">
-                                                    Shipment #{shipment.id.slice(-4)}
-                                                </span>
-                                            </div>
-
-                                            <div className="flex flex-col gap-3">
-                                                {shipment.items.map(item => (
-                                                    <div
-                                                        key={item.id}
-                                                        className="bg-gray-50 p-3 rounded border border-gray-100"
-                                                    >
-                                                        {item.type === 'TEXT' && (
-                                                            <p className="font-handheld text-lg text-gray-800 whitespace-pre-wrap leading-relaxed">
-                                                                {/* If content is a URL (from uploadthing), fetch it? Or is it raw text? 
-                                                                    Wait, for TEXT type, we stored the URL in content if it was uploaded as a file?
-                                                                    Actually, in Compose.tsx we uploaded text as a file. 
-                                                                    So content is a URL. We need to fetch it or display a link.
-                                                                    User said "display text". 
-                                                                    If it's a URL, I can't easily display it without fetching.
-                                                                    For now, let's assume I should display a link or if I can, fetch it.
-                                                                    Given the constraints, I'll display a "View Letter" link if it looks like a URL, 
-                                                                    or just the content if it's not.
-                                                                    Actually, `Compose.tsx` creates a File for text. So it IS a URL.
-                                                                    I'll render an iframe or a fetch? 
-                                                                    Let's render a link for now to be safe, or try to fetch if I can.
-                                                                    Actually, for "TEXT", maybe I should have stored it directly in DB if it's short?
-                                                                    But the plan was "upload files".
-                                                                    I will render a "Read Letter" button that opens the URL.
-                                                                */}
-                                                                <a
-                                                                    href={item.content}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="text-blue-600 hover:underline flex items-center gap-2"
-                                                                >
-                                                                    <span>📄 Read Letter</span>
-                                                                </a>
-                                                            </p>
-                                                        )}
-                                                        {item.type === 'AUDIO' && (
-                                                            <div className="w-full">
-                                                                <audio
-                                                                    controls
-                                                                    src={item.content}
-                                                                    className="w-full h-8"
-                                                                />
-                                                            </div>
-                                                        )}
-                                                        {item.type === 'PHOTO' && (
-                                                            <img
-                                                                src={item.content}
-                                                                alt="Attached photo"
-                                                                className="max-w-full h-auto rounded border border-gray-200"
-                                                            />
-                                                        )}
-                                                        {/* Handle other types if needed */}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                    shipment={shipment}
+                                    selectedChar={selectedChar}
+                                    onClick={() => setViewingShipment(shipment)}
+                                />
                             ))
                         )}
                     </div>
