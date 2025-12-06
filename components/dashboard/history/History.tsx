@@ -68,14 +68,21 @@ export const History: React.FC<HistoryProps> = ({ selectedChar, shipments = [] }
                         </p>
                     </div>
                 </div>
-                {viewingShipment && (
+                {viewingShipment ? (
                     <button
                         onClick={() => setViewingShipment(null)}
                         className="flex items-center gap-2 font-pixel text-[10px] bg-[#8b7355] text-white px-3 py-2 pixel-border-sm hover:bg-[#5e4c35] transition-colors"
                     >
                         <ArrowLeft size={10} /> BACK TO LIST
                     </button>
-                )}
+                ) : selectedChar ? (
+                    <button
+                        onClick={() => router.push(`/?charId=${selectedChar.id}`)}
+                        className="flex items-center gap-2 font-pixel text-[10px] bg-[#8b7355] text-white px-3 py-2 pixel-border-sm hover:bg-[#5e4c35] transition-colors"
+                    >
+                        <ArrowLeft size={10} /> BACK TO MAP
+                    </button>
+                ) : null}
             </div>
 
             {/* Content Area */}
