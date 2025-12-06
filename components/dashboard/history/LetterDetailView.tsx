@@ -1,7 +1,7 @@
 import React from 'react';
 import { Loader2, Headphones, Image as ImageIcon } from 'lucide-react';
 import { Character } from '@/lib/dashboard-data';
-import { Shipment, GiftItem } from '@prisma/client';
+import type { Shipment, GiftItem } from '@prisma/client';
 import { AudioPlayer } from './AudioPlayer';
 
 interface LetterDetailViewProps {
@@ -61,53 +61,44 @@ export const LetterDetailView: React.FC<LetterDetailViewProps> = ({
                 </div>
 
                 {/* Attachments Section */}
-                {shipment.items.length > 0 && (
+                {shipment.items.some(item => item.type !== 'TEXT') ? (
                     <div className="mt-auto bg-gray-50 p-4 rounded border-2 border-gray-200 border-dashed">
-                        <div className="font-pixel text-[8px] text-gray-400 mb-4 uppercase">Attached Evidence</div>
+                        <div className="font-pixel text-[8px] text-gray-400 mb-4 uppercase">Attached gifts</div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {shipment.items.map(item => (
-                                <div key={item.id} className="bg-white p-3 pixel-border-sm flex items-center gap-3">
-                                    {item.type === 'TEXT' && (
-                                        <>
-                                            <div className="w-10 h-10 bg-gray-100 flex items-center justify-center text-2xl border border-gray-300">
-                                                📄
+                            {shipment.items
+                                .filter(item => item.type !== 'TEXT')
+                                .map(item => (
+                                    <div key={item.id} className="bg-white p-3 pixel-border-sm flex items-center gap-3">
+                                        {item.type === 'AUDIO' && (
+                                            <div className="w-full">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <Headphones size={14} className="text-blue-500" />
+                                                    <span className="font-pixel text-[8px]">Voice Memo</span>
+                                                </div>
+                                                <AudioPlayer src={item.content} />
                                             </div>
-                                            <div>
-                                                <div className="font-pixel text-[8px]">Letter</div>
-                                                <div className="font-handheld text-xs text-gray-500 uppercase">
-                                                    TEXT
+                                        )}
+                                        {item.type === 'PHOTO' && (
+                                            <div className="w-full">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <ImageIcon size={14} className="text-orange-500" />
+                                                    <span className="font-pixel text-[8px]">Photo</span>
+                                                </div>
+                                                <div className="h-24 bg-white border border-gray-200 w-full flex items-center justify-center relative overflow-hidden">
+                                                    <img
+                                                        src={item.content}
+                                                        alt="Attached"
+                                                        className="max-w-full max-h-full object-contain"
+                                                    />
                                                 </div>
                                             </div>
-                                        </>
-                                    )}
-                                    {item.type === 'AUDIO' && (
-                                        <div className="w-full">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <Headphones size={14} className="text-blue-500" />
-                                                <span className="font-pixel text-[8px]">Voice Memo</span>
-                                            </div>
-                                            <AudioPlayer src={item.content} />
-                                        </div>
-                                    )}
-                                    {item.type === 'PHOTO' && (
-                                        <div className="w-full">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <ImageIcon size={14} className="text-orange-500" />
-                                                <span className="font-pixel text-[8px]">Photo</span>
-                                            </div>
-                                            <div className="h-24 bg-white border border-gray-200 w-full flex items-center justify-center relative overflow-hidden">
-                                                <img
-                                                    src={item.content}
-                                                    alt="Attached"
-                                                    className="max-w-full max-h-full object-contain"
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                                        )}
+                                    </div>
+                                ))}
                         </div>
                     </div>
+                ) : (
+                    <></>
                 )}
             </div>
         </div>

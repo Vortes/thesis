@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { History as HistoryIcon, User, ArrowLeft } from 'lucide-react';
 import { Character } from '@/lib/dashboard-data';
 import { useRouter } from 'next/navigation';
-import { Shipment, GiftItem } from '@prisma/client';
+import type { Shipment, GiftItem } from '@prisma/client';
 import { ShipmentCard } from './ShipmentCard';
 import { LetterDetailView } from './LetterDetailView';
 
@@ -17,8 +17,6 @@ export const History: React.FC<HistoryProps> = ({ selectedChar, shipments = [] }
     const [viewingShipment, setViewingShipment] = useState<(Shipment & { items: GiftItem[] }) | null>(null);
     const [letterContent, setLetterContent] = useState<string | null>(null);
     const [loadingLetter, setLoadingLetter] = useState(false);
-
-    console.log(shipments);
 
     // Fetch letter content when viewing a shipment
     useEffect(() => {

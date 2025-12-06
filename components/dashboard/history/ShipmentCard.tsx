@@ -30,7 +30,7 @@ export const ShipmentCard: React.FC<ShipmentCardProps> = ({ shipment, selectedCh
                 <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-[#8b7355] text-[#e0d5c1] flex flex-col items-center justify-center pixel-border-sm">
                         <span className="font-pixel text-[8px]">LOG</span>
-                        <span className="font-handheld text-lg">#{shipment.id.slice(-4)}</span>
+                        <span className="font-handheld text-lg">#{String(shipment.id.slice(-4))}</span>
                     </div>
                     <div>
                         <div className="font-pixel text-[10px] text-gray-400 mb-1">
