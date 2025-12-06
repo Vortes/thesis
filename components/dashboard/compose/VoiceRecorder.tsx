@@ -10,6 +10,10 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onSave, onCancel }
     const [isRecording, setIsRecording] = useState(false);
     const [duration, setDuration] = useState(0);
     const [hasRecording, setHasRecording] = useState(false);
+    const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const chunksRef = useRef<Blob[]>([]);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
     const formatTime = (seconds: number) => {
@@ -18,25 +22,71 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onSave, onCancel }
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const handleToggleRecord = () => {
-        if (isRecording) {
-            if (timerRef.current) clearInterval(timerRef.current);
-            setIsRecording(false);
-            setHasRecording(true);
-        } else {
-            setDuration(0);
-            setHasRecording(false);
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream);
+            mediaRecorderRef.current = mediaRecorder;
+            chunksRef.current = [];
+
+            mediaRecorder.ondataavailable = e => {
+                if (e.data.size > 0) {
+                    chunksRef.current.push(e.data);
+                }
+            };
+
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+                setAudioBlob(blob);
+                setHasRecording(true);
+                stream.getTracks().forEach(track => track.stop());
+            };
+
+            mediaRecorder.start();
             setIsRecording(true);
+            setDuration(0);
             timerRef.current = setInterval(() => setDuration(p => p + 1), 1000);
+        } catch (err) {
+            console.error('Error accessing microphone:', err);
+            // Handle error (maybe show a toast)
         }
     };
 
-    const handleSave = () =>
-        onSave({ id: Date.now(), type: 'voice', name: 'Tape Recording', icon: <Mic />, detail: formatTime(duration) });
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+            if (timerRef.current) clearInterval(timerRef.current);
+        }
+    };
+
+    const handleToggleRecord = () => {
+        if (isRecording) {
+            stopRecording();
+        } else {
+            startRecording();
+        }
+    };
+
+    const handleSave = () => {
+        if (audioBlob) {
+            onSave({
+                id: Date.now(),
+                type: 'voice',
+                name: 'Tape Recording',
+                icon: <Mic />,
+                detail: formatTime(duration),
+                blob: audioBlob // Pass blob to parent to save to IDB
+            });
+        }
+    };
 
     useEffect(() => {
         return () => {
             if (timerRef.current) clearInterval(timerRef.current);
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+                mediaRecorderRef.current.stop();
+            }
         };
     }, []);
 
@@ -81,6 +131,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onSave, onCancel }
                                     onClick={() => {
                                         setHasRecording(false);
                                         setDuration(0);
+                                        setAudioBlob(null);
                                     }}
                                     className="flex-1 bg-gray-300 py-2 pixel-border-sm font-pixel text-[8px] hover:cursor-pointer"
                                 >
