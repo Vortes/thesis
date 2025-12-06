@@ -18,6 +18,8 @@ export const History: React.FC<HistoryProps> = ({ selectedChar, shipments = [] }
     const [letterContent, setLetterContent] = useState<string | null>(null);
     const [loadingLetter, setLoadingLetter] = useState(false);
 
+    console.log(shipments);
+
     // Fetch letter content when viewing a shipment
     useEffect(() => {
         const fetchLetter = async () => {
@@ -107,21 +109,66 @@ export const History: React.FC<HistoryProps> = ({ selectedChar, shipments = [] }
                     />
                 ) : (
                     /* --- LOG LIST VIEW --- */
-                    <div className="grid grid-cols-1 gap-4 mx-auto relative z-10">
-                        {shipments.length === 0 ? (
-                            <div className="text-center font-handheld text-xl text-gray-500 mt-20">
-                                No archives found.
-                            </div>
-                        ) : (
-                            shipments.map(shipment => (
-                                <ShipmentCard
-                                    key={shipment.id}
-                                    shipment={shipment}
-                                    selectedChar={selectedChar}
-                                    onClick={() => setViewingShipment(shipment)}
-                                />
-                            ))
-                        )}
+                    <div className="grid grid-cols-1 gap-8 mx-auto relative z-10 pb-10">
+                        {(() => {
+                            const inTransit = shipments.filter(s => s.status === 'IN_TRANSIT');
+                            const delivered = shipments.filter(s => s.status === 'DELIVERED');
+
+                            if (shipments.length === 0) {
+                                return (
+                                    <div className="text-center font-handheld text-xl text-gray-500 mt-20">
+                                        No archives found.
+                                    </div>
+                                );
+                            }
+
+                            return (
+                                <>
+                                    {/* In Transit Section */}
+                                    {inTransit.length > 0 && (
+                                        <div className="space-y-4">
+                                            <div className="flex items-center gap-2 mb-4 px-1">
+                                                <div className="h-2 w-2 bg-yellow-500 rounded-full animate-pulse" />
+                                                <h3 className="font-pixel text-[10px] text-[#8b7355] uppercase tracking-wider">
+                                                    IN TRANSIT ({inTransit.length})
+                                                </h3>
+                                            </div>
+                                            <div className="grid gap-4">
+                                                {inTransit.map(shipment => (
+                                                    <ShipmentCard
+                                                        key={shipment.id}
+                                                        shipment={shipment}
+                                                        selectedChar={selectedChar}
+                                                        onClick={() => setViewingShipment(shipment)}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Delivered Section */}
+                                    {delivered.length > 0 && (
+                                        <div className="space-y-4">
+                                            <div className="flex items-center gap-2 mb-4 px-1">
+                                                <h3 className="font-pixel text-[10px] text-[#8b7355] uppercase tracking-wider opacity-70">
+                                                    Delivered Shipments ({delivered.length})
+                                                </h3>
+                                            </div>
+                                            <div className="grid gap-4">
+                                                {delivered.map(shipment => (
+                                                    <ShipmentCard
+                                                        key={shipment.id}
+                                                        shipment={shipment}
+                                                        selectedChar={selectedChar}
+                                                        onClick={() => setViewingShipment(shipment)}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            );
+                        })()}
                     </div>
                 )}
             </div>

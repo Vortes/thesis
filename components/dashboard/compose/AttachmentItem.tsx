@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 
 interface AttachmentItemProps {
@@ -7,7 +7,7 @@ interface AttachmentItemProps {
 }
 
 export const AttachmentItem: React.FC<AttachmentItemProps> = ({ item, onRemove }) => {
-    const [audioUrl, setAudioUrl] = React.useState<string | null>(null);
+    const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
     useEffect(() => {
         if (item.type === 'voice' && item.blob) {

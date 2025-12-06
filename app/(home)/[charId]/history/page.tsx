@@ -3,6 +3,7 @@ import { fetchMessengers } from '@/app/utils/fetch-messengers';
 import { redirect } from 'next/navigation';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
+import { ShipmentStatus } from '@prisma/client';
 
 export default async function HistoryPage({ params }: { params: Promise<{ charId: string }> }) {
     const { charId } = await params;
@@ -26,7 +27,9 @@ export default async function HistoryPage({ params }: { params: Promise<{ charId
                 { senderId: userId, recipientId: selectedChar.recipientId },
                 { senderId: selectedChar.recipientId, recipientId: userId }
             ],
-            status: 'DELIVERED'
+            status: {
+                in: [ShipmentStatus.DELIVERED, ShipmentStatus.IN_TRANSIT]
+            }
         },
         include: {
             items: true
