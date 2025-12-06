@@ -9,7 +9,9 @@ export interface Character {
     destination: string;
     progress: number;
     color: string;
-    coords: { x: number; y: number };
+    skinId?: string; // Messenger sprite/icon identifier
+    coords: { lng: number; lat: number }; // Geographic coordinates (origin/current)
+    destCoords?: { lng: number; lat: number }; // Destination coordinates (for En Route)
     history: {
         id: number;
         date: string;
