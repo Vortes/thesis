@@ -13,7 +13,7 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-    const targetUserId = 'user_3675PFptgQz7QtUsJcGUorUR4qL';
+    const targetUserId = 'user_36V5TUZuhfeAtMHpkRE8PBVBOcV';
 
     console.log(`Seeding for user: ${targetUserId}`);
 

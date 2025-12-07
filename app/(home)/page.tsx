@@ -10,5 +10,5 @@ export default async function Home({
     const messengers = await fetchMessengers();
     const selectedChar = messengers.find(c => c.id === charId) || null;
 
-    return <Map selectedChar={selectedChar} />;
+    return <Map selectedChar={selectedChar} characters={messengers} />;
 }

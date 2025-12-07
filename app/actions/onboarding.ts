@@ -1,5 +1,5 @@
 'use server';
-
+//TODO: user not brought here immediately after sign up, could be due to fetchmessenger being called first? idk yet
 import { currentUser } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';

@@ -62,11 +62,21 @@ model Messenger {
   connection   Connection @relation(fields: [connectionId], references: [id])
 
   // Visual Customization (for your 3D/Frontend assets)
-  // Store the ID of the 3D model/skin here
   skinId String @default("default_messenger")
 
-  // State: Is the messenger busy?
-  isBusy Boolean @default(false)
+  // Detailed status tracking
+  status MessengerStatus @default(AVAILABLE)
+
+  // Current shipment being carried (null when available)
+  currentShipmentId String?   @unique
+  currentShipment   Shipment? @relation("CarryingMessenger", fields: [currentShipmentId], references: [id])
+
+  // Which user currently "has" the messenger (can send next)
+  // This alternates between connection initiator/recipient
+  currentHolderId String?
+
+  // Reverse relation for shipments this messenger has carried
+  shipments Shipment[] @relation("ShipmentMessenger")
 }
 
 model Shipment {
@@ -89,6 +99,22 @@ model Shipment {
 
   // Metadata for the journey visualization
   distanceInKm Float?
+
+  // Snapshot of coordinates at dispatch time (from User locations)
+  originLat Float?
+  originLng Float?
+  destLat   Float?
+  destLng   Float?
+
+  // Link to messenger carrying this shipment
+  messengerId String?
+  messenger   Messenger? @relation("ShipmentMessenger", fields: [messengerId], references: [id])
+
+  // For recall functionality
+  recalledAt DateTime? // When sender cancelled (null if not recalled)
+
+  // Reverse relation for currentShipment on Messenger
+  carryingMessenger Messenger? @relation("CarryingMessenger")
 }
 
 model GiftItem {
@@ -112,9 +138,18 @@ enum ConnectionStatus {
 
 enum ShipmentStatus {
   DRAFTING // User is still adding items
-  IN_TRANSIT // Messenger is "walking"
-  DELIVERED // Ready to be opened
+  IN_TRANSIT // Messenger is traveling
+  ARRIVED // Messenger arrived, waiting to be opened
   OPENED // User has viewed it
+  RECALLED // Sender cancelled, messenger returning
+}
+
+enum MessengerStatus {
+  AVAILABLE // Ready to accept new shipment
+  LOADING // User is composing a shipment
+  IN_TRANSIT // Traveling to recipient
+  WAITING // Arrived, waiting for recipient to open/reply
+  RETURNING // Heading back after recall
 }
 
 enum GiftType {
