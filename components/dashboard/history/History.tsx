@@ -117,7 +117,9 @@ export const History: React.FC<HistoryProps> = ({ selectedChar, shipments = [] }
                     <div className="grid grid-cols-1 gap-8 mx-auto relative z-10 pb-10">
                         {(() => {
                             const inTransit = shipments.filter(s => s.status === 'IN_TRANSIT');
-                            const delivered = shipments.filter(s => s.status === 'DELIVERED');
+                            const arrivedOrOpened = shipments.filter(
+                                s => s.status === 'ARRIVED' || s.status === 'OPENED'
+                            );
 
                             if (shipments.length === 0) {
                                 return (
@@ -151,16 +153,16 @@ export const History: React.FC<HistoryProps> = ({ selectedChar, shipments = [] }
                                         </div>
                                     )}
 
-                                    {/* Delivered Section */}
-                                    {delivered.length > 0 && (
+                                    {/* Arrived/Opened Section */}
+                                    {arrivedOrOpened.length > 0 && (
                                         <div className="space-y-4">
                                             <div className="flex items-center gap-2 mb-4 px-1">
                                                 <h3 className="font-pixel text-[10px] text-[#8b7355] uppercase tracking-wider opacity-70">
-                                                    Delivered Shipments ({delivered.length})
+                                                    Arrived Shipments ({arrivedOrOpened.length})
                                                 </h3>
                                             </div>
                                             <div className="grid gap-4">
-                                                {delivered.map(shipment => (
+                                                {arrivedOrOpened.map(shipment => (
                                                     <ShipmentCard
                                                         key={shipment.id}
                                                         shipment={shipment}

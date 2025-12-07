@@ -28,7 +28,7 @@ export default async function HistoryPage({ params }: { params: Promise<{ charId
                 { senderId: selectedChar.recipientId, recipientId: userId }
             ],
             status: {
-                in: [ShipmentStatus.DELIVERED, ShipmentStatus.IN_TRANSIT]
+                in: [ShipmentStatus.ARRIVED, ShipmentStatus.IN_TRANSIT, ShipmentStatus.OPENED]
             }
         },
         include: {

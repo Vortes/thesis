@@ -5,6 +5,7 @@ import mapboxgl from 'mapbox-gl';
 import * as turf from '@turf/turf';
 import { Character } from '@/lib/dashboard-data';
 import { useRouter } from 'next/navigation';
+import { Progress } from '@/components/ui/progress';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 // Set Mapbox access token
@@ -89,7 +90,58 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
     const mapContainer = useRef<HTMLDivElement>(null);
     const map = useRef<mapboxgl.Map | null>(null);
     const markersRef = useRef<globalThis.Map<string | number, mapboxgl.Marker>>(new globalThis.Map());
+    const pathsRef = useRef(new globalThis.Map<string | number, GeoJSON.Feature<GeoJSON.LineString>>());
+    const animationRef = useRef<number | undefined>(undefined);
     const [mapLoaded, setMapLoaded] = useState(false);
+    const [currentETA, setCurrentETA] = useState<string | null>(null);
+
+    // Travel time: 1km = 1 minute (60000ms)
+    const TRAVEL_SPEED_MS_PER_KM = 3000;
+
+    // Calculate ETA (remaining time in ms) for a character
+    const calculateETA = (char: Character): number | null => {
+        if (!char.shipmentData) return null;
+        if (char.status !== 'En Route' && char.status !== 'Returning') return null;
+
+        const { dispatchedAt, recalledAt, distanceInKm } = char.shipmentData;
+        const travelTimeMs = (distanceInKm ?? 1000) * TRAVEL_SPEED_MS_PER_KM;
+        const now = Date.now();
+
+        if (char.status === 'Returning' && recalledAt) {
+            // Return trip is 1/4 of time already traveled
+            const timeOutMs = recalledAt - dispatchedAt;
+            const returnTimeMs = timeOutMs / 4;
+            const returnEndTime = recalledAt + returnTimeMs;
+            return Math.max(0, returnEndTime - now);
+        } else {
+            // Normal transit
+            const arrivalTime = dispatchedAt + travelTimeMs;
+            return Math.max(0, arrivalTime - now);
+        }
+    };
+
+    // Format milliseconds to human-readable time (e.g., "5m 30s" or "2h 15m")
+    const formatETA = (ms: number): string => {
+        if (ms <= 0) return 'Arriving...';
+
+        const seconds = Math.floor(ms / 1000);
+        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(minutes / 60);
+        const days = Math.floor(hours / 24);
+
+        if (days > 0) {
+            const remainingHours = hours % 24;
+            return `${days}d ${remainingHours}h`;
+        } else if (hours > 0) {
+            const remainingMinutes = minutes % 60;
+            return `${hours}h ${remainingMinutes}m`;
+        } else if (minutes > 0) {
+            const remainingSeconds = seconds % 60;
+            return `${minutes}m ${remainingSeconds}s`;
+        } else {
+            return `${seconds}s`;
+        }
+    };
 
     // Initialize map
     useEffect(() => {
@@ -134,15 +186,19 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
 
         // Add markers and paths for each character
         characters.forEach(char => {
-            // For "En Route" characters, calculate position along path
+            // Determine if this character is moving (needs animation)
+            const isMoving = char.status === 'En Route' || char.status === 'Returning';
+
+            // Calculate initial marker position
             let markerCoords: [number, number];
 
-            if (char.status === 'En Route' && char.destCoords) {
-                const startCoords: [number, number] = [char.coords.lng, char.coords.lat];
+            if (isMoving && char.originCoords && char.destCoords) {
+                const startCoords: [number, number] = [char.originCoords.lng, char.originCoords.lat];
                 const endCoords: [number, number] = [char.destCoords.lng, char.destCoords.lat];
 
                 // Generate and draw the path
                 const path = generateBezierPath(startCoords, endCoords);
+                pathsRef.current.set(char.id, path);
                 const sourceId = `path-${char.id}`;
 
                 if (!map.current?.getSource(sourceId)) {
@@ -156,7 +212,7 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
                         type: 'line',
                         source: sourceId,
                         paint: {
-                            'line-color': char.color,
+                            'line-color': char.status === 'Returning' ? '#fbbf24' : char.color,
                             'line-width': 3,
                             'line-dasharray': [2, 2],
                             'line-opacity': 0.7
@@ -164,8 +220,9 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
                     });
                 }
 
-                // Get position along path based on progress
-                markerCoords = getPositionAlongPath(path, char.progress);
+                // Calculate initial progress
+                const progress = calculateProgress(char);
+                markerCoords = getPositionAlongPath(path, progress);
             } else {
                 markerCoords = [char.coords.lng, char.coords.lat];
             }
@@ -176,18 +233,24 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
             markerEl.innerHTML = `
                 <div class="relative cursor-pointer group">
                     ${
-                        char.status === 'Ready'
+                        char.status === 'Ready' || char.status === 'Waiting'
                             ? `
                         <div class="absolute -top-6 left-1/2 -translate-x-1/2 animate-bounce">
-                            <div class="bg-red-500 text-white font-pixel text-[10px] w-4 h-4 flex items-center justify-center" style="box-shadow: -2px 0 0 0 black, 2px 0 0 0 black, 0 -2px 0 0 black, 0 2px 0 0 black;">!</div>
+                            <div class="bg-${
+                                char.status === 'Waiting' ? 'yellow' : 'red'
+                            }-500 text-white font-pixel text-[10px] w-4 h-4 flex items-center justify-center" style="box-shadow: -2px 0 0 0 black, 2px 0 0 0 black, 0 -2px 0 0 black, 0 2px 0 0 black;">${
+                                  char.status === 'Waiting' ? '?' : '!'
+                              }</div>
                         </div>
                     `
                             : ''
                     }
                     ${
-                        char.status === 'En Route'
+                        char.status === 'En Route' || char.status === 'Returning'
                             ? `
-                        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-white rounded-full animate-ping opacity-50 -z-10"></div>
+                        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 ${
+                            char.status === 'Returning' ? 'bg-yellow-400' : 'bg-white'
+                        } rounded-full animate-ping opacity-50 -z-10"></div>
                     `
                             : ''
                     }
@@ -205,7 +268,12 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
             `;
 
             markerEl.addEventListener('click', () => {
-                onSelectChar?.(char);
+                if (onSelectChar) {
+                    onSelectChar(char);
+                } else {
+                    // Default behavior: navigate to select this character
+                    router.push(`/?charId=${char.id}`);
+                }
             });
 
             const marker = new mapboxgl.Marker({
@@ -229,7 +297,59 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
             });
             map.current?.fitBounds(bounds, { padding: 80, maxZoom: 4 });
         }
-    }, [characters, mapLoaded, onSelectChar]);
+    }, [characters, mapLoaded, onSelectChar, router]);
+
+    // Calculate progress based on shipment data
+    const calculateProgress = (char: Character): number => {
+        if (!char.shipmentData) return 0;
+
+        const { dispatchedAt, recalledAt, distanceInKm } = char.shipmentData;
+        const travelTimeMs = (distanceInKm ?? 1000) * TRAVEL_SPEED_MS_PER_KM;
+
+        if (char.status === 'Returning' && recalledAt) {
+            // Return trip is 1/4 of time already traveled
+            const timeOutMs = recalledAt - dispatchedAt;
+            const returnTimeMs = timeOutMs / 4;
+            const returnElapsedMs = Date.now() - recalledAt;
+            // Progress inverts (100% at recall point, 0% at origin)
+            const progressOut = Math.min(100, (timeOutMs / travelTimeMs) * 100);
+            const returnProgress = Math.min(100, (returnElapsedMs / returnTimeMs) * 100);
+            return Math.max(0, progressOut * (1 - returnProgress / 100));
+        } else {
+            // Normal transit
+            const elapsedMs = Date.now() - dispatchedAt;
+            return Math.min(100, (elapsedMs / travelTimeMs) * 100);
+        }
+    };
+
+    // Animation loop for moving markers
+    useEffect(() => {
+        if (!mapLoaded) return;
+
+        const animate = () => {
+            characters.forEach(char => {
+                const isMoving = char.status === 'En Route' || char.status === 'Returning';
+                if (!isMoving || !char.shipmentData) return;
+
+                const marker = markersRef.current.get(char.id);
+                const path = pathsRef.current.get(char.id);
+                if (!marker || !path) return;
+
+                const progress = calculateProgress(char);
+                const newPos = getPositionAlongPath(path, progress);
+                marker.setLngLat(newPos);
+            });
+
+            animationRef.current = requestAnimationFrame(animate);
+        };
+
+        animate();
+        return () => {
+            if (animationRef.current) {
+                cancelAnimationFrame(animationRef.current);
+            }
+        };
+    }, [characters, mapLoaded]);
 
     // Pan to selected character
     useEffect(() => {
@@ -242,13 +362,38 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
         });
     }, [selectedChar, mapLoaded]);
 
+    // Update ETA for selected character
+    useEffect(() => {
+        if (!selectedChar) {
+            setCurrentETA(null);
+            return;
+        }
+
+        const isMoving = selectedChar.status === 'En Route' || selectedChar.status === 'Returning';
+        if (!isMoving) {
+            setCurrentETA(null);
+            return;
+        }
+
+        // Update ETA immediately and then every second
+        const updateETA = () => {
+            const eta = calculateETA(selectedChar);
+            setCurrentETA(eta !== null ? formatETA(eta) : null);
+        };
+
+        updateETA();
+        const interval = setInterval(updateETA, 1000);
+
+        return () => clearInterval(interval);
+    }, [selectedChar]);
+
     return (
         <div className="absolute inset-0 bg-[#e5e7eb] flex flex-col animate-in fade-in duration-300">
             {/* Map Container */}
             <div ref={mapContainer} className="flex-1 relative overflow-hidden">
                 {/* Map Label Overlay */}
                 <div className="absolute top-4 left-4 bg-white/80 p-2 pixel-border-sm z-20 pointer-events-none">
-                    <div className="font-pixel text-[8px] text-gray-500">GLOBAL TRACKER</div>
+                    <div className="font-pixel text-[8px] text-gray-500">GLOBAL MAP</div>
                 </div>
             </div>
 
@@ -272,15 +417,22 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
                         <p className="font-handheld text-lg text-gray-600">
                             {selectedChar.status === 'Ready'
                                 ? 'Waiting for orders at base.'
+                                : selectedChar.status === 'Waiting'
+                                ? 'Waiting for a reply...'
                                 : `Currently traveling to ${selectedChar.destination}.`}
                         </p>
-                        {selectedChar.status !== 'Ready' && (
-                            <div className="w-full bg-gray-200 h-2 mt-2 border border-gray-400 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-pixel-accent"
-                                    style={{ width: `${selectedChar.progress}%` }}
-                                ></div>
+                        {/* ETA Display */}
+                        {currentETA && (selectedChar.status === 'En Route' || selectedChar.status === 'Returning') && (
+                            <div className="flex items-center gap-2 mt-1">
+                                <span className="font-pixel text-[10px] text-gray-500">ETA:</span>
+                                <span className="font-pixel text-[10px] text-pixel-accent">{currentETA}</span>
                             </div>
+                        )}
+                        {selectedChar.status !== 'Ready' && (
+                            <Progress
+                                value={selectedChar.progress}
+                                className="mt-2 h-2 bg-gray-200 border border-gray-400"
+                            />
                         )}
                     </div>
 
@@ -291,12 +443,14 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
                     >
                         VIEW HISTORY
                     </button>
-                    <button
-                        onClick={() => router.push(`/${selectedChar.id}/compose`)}
-                        className="bg-[#ef4444] text-white px-4 py-2 font-pixel text-[10px] pixel-border-sm hover:translate-y-[-2px] hover:shadow-lg animate-bounce-sm hover:cursor-pointer"
-                    >
-                        START QUEST
-                    </button>
+                    {selectedChar.canSend && (
+                        <button
+                            onClick={() => router.push(`/${selectedChar.id}/compose`)}
+                            className="bg-[#ef4444] text-white px-4 py-2 font-pixel text-[10px] pixel-border-sm animate-bounce-sm hover:cursor-pointer hover:bg-[#ef2222]"
+                        >
+                            CREATE GIFT
+                        </button>
+                    )}
                 </div>
             )}
         </div>

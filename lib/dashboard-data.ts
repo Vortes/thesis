@@ -5,13 +5,21 @@ export interface Character {
     id: number | string;
     recipientId: string;
     name: string;
-    status: 'Ready' | 'En Route' | 'Delivered';
+    status: 'Ready' | 'En Route' | 'Waiting' | 'Returning' | 'Loading';
     destination: string;
-    progress: number;
+    progress: number; // Deprecated: will be calculated on frontend
     color: string;
     skinId?: string; // Messenger sprite/icon identifier
-    coords: { lng: number; lat: number }; // Geographic coordinates (origin/current)
-    destCoords?: { lng: number; lat: number }; // Destination coordinates (for En Route)
+    coords: { lng: number; lat: number }; // Geographic coordinates (current position or holder's location)
+    destCoords?: { lng: number; lat: number }; // Destination coordinates (for En Route/Returning)
+    originCoords?: { lng: number; lat: number }; // Origin coordinates (for En Route/Returning)
+    canSend: boolean; // Whether current user can send with this messenger
+    shipmentData?: {
+        shipmentId: string;
+        dispatchedAt: number; // Unix timestamp
+        recalledAt?: number; // Unix timestamp if recalled
+        distanceInKm: number | null;
+    };
     history: {
         id: number;
         date: string;
