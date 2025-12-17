@@ -130,18 +130,20 @@ export const fetchMessengers = async () => {
                     break;
 
                 case MessengerStatus.RETURNING:
-                    // Messenger is returning from current position to origin
+                    // Messenger is returning FROM the shipment destination BACK TO the shipment origin
                     if (shipment) {
+                        // For returning: originCoords = where they're traveling FROM (shipment dest)
+                        //                destCoords = where they're traveling TO (shipment origin)
                         originCoords = {
-                            lng: shipment.originLng ?? 0,
-                            lat: shipment.originLat ?? 0
-                        };
-                        destCoords = originCoords; // Returning TO origin
-                        // Current position calculated on frontend based on recall progress
-                        coords = {
                             lng: shipment.destLng ?? 0,
                             lat: shipment.destLat ?? 0
                         };
+                        destCoords = {
+                            lng: shipment.originLng ?? 0,
+                            lat: shipment.originLat ?? 0
+                        };
+                        // Initial coords set to origin of return journey (shipment dest)
+                        coords = originCoords;
                     } else {
                         coords = { lng: 0, lat: 0 };
                     }

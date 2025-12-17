@@ -1,0 +1,206 @@
+Version: 1.0
+Core Aesthetic: Cozy Retro-Futurism / "Game Boy Color Desk"
+Philosophy: Tactile, Low-Resolution, Nostalgic, Slow-Tech.
+
+1. Visual Language Overview
+
+The interface mimics a physical desktop viewed through a low-resolution pixelated screen (reminiscent of 90s handheld consoles). It avoids modern "flat design" trends in favor of:
+
+Skeuomorphism: Digital items look like physical objects (paper, folders, cassettes).
+
+Hard Edges: No soft rounded corners (unless pixelated).
+
+Chunky UI: Large buttons, thick borders, and high-contrast elements.
+
+2. Color Palette
+
+A. The Desk Environment (Structural)
+
+These colors define the "physical" world of the app (the desk, the organizer, the shadows).
+
+Dark Wood (Primary UI Borders/Sidebar): #8b7355
+
+Light Wood (Main Containers): #a08560
+
+Deep Shadow (Recessed areas/Text on wood): #5e4c35
+
+Leather/Pouch (Toolkits): #4a3b2a
+
+B. Paper & Surfaces (Content)
+
+Used for areas where users read or write.
+
+Crisp Paper (Letters): #fdfbf7
+
+Aged Folder (Sidebar/Headers): #e0d5c1
+
+Map/Background: #e5e7eb (Cool Grey)
+
+Archive Paper (History): #f0e6d2
+
+C. Functional Accents
+
+Terminal Green (Success/Active/Open): #a3e635
+
+Alert Red (Action/Ready/Record): #ef4444
+
+Tech Blue (Information/Connecting): #60a5fa
+
+Ink Black (Borders/Text): #2d2d2d (Avoid pure #000000 for text)
+
+3. Typography
+
+The app uses a strict two-font system to distinguish between "System UI" and "User Content".
+
+Primary: System UI
+
+Font: Press Start 2P (Google Fonts)
+
+Usage: Buttons, Tab Labels, Status Indicators, Tooltips.
+
+Styling Rules:
+
+Almost always UPPERCASE.
+
+Small sizes (8px - 12px).
+
+Letter spacing should be slightly wide (tracking-widest in Tailwind).
+
+Secondary: User Content
+
+Font: VT323 (Google Fonts)
+
+Usage: Letter body text, Logs, Descriptions, Dialogue.
+
+Styling Rules:
+
+Mixed case allowed.
+
+Large sizes (text-xl to text-3xl) to mimic low-resolution screen legibility.
+
+Simulates a typewriter or terminal output.
+
+4. Component Styling Rules
+
+A. The "Pixel Border"
+
+CRITICAL: Do not use standard CSS borders (e.g., border: 2px solid black). They look too "web-like".
+Instead, use box-shadow to create hard, non-aliased pixel edges.
+
+Class: .pixel-border
+
+box-shadow: 
+  -4px 0 0 0 black,
+  4px 0 0 0 black,
+  0 -4px 0 0 black,
+  0 4px 0 0 black;
+
+
+Class: .pixel-border-sm (For smaller buttons/items)
+
+box-shadow: 
+  -2px 0 0 0 black,
+  2px 0 0 0 black,
+  0 -2px 0 0 black,
+  0 2px 0 0 black;
+
+
+B. Buttons
+
+Base: High contrast background (e.g., #fdfbf7 or #ef4444).
+
+Border: Always use .pixel-border-sm.
+
+Interaction:
+
+Hover: Shift background brightness or inverse colors.
+
+Active: Physical displacement using translate-y.
+
+Disabled: Reduce opacity to 0.5 and change cursor to not-allowed.
+
+C. Modals & Overlays
+
+Backdrop: bg-black/60 with backdrop-blur-sm.
+
+Container: Must look like a physical device (e.g., A grey plastic Cassette Player, a tan Sketchpad).
+
+Close Button: Always a Red square with a white 'X' in the top-right corner, protruding slightly from the frame.
+
+5. Animation Library
+
+Animations should feel mechanical and "sprite-based", not fluid or elastic.
+
+animate-float: Slow up/down bobbing for floating UI elements or characters.
+
+animate-bounce-sm: Short, snappy vertical bounce for alerts (Exclamation marks).
+
+animate-pulse-ring: Expanding ripple effect for map pins.
+
+animate-walk: 4-step rotation/waddle for characters.
+
+@keyframes walk {
+  0% { transform: translateY(0); }
+  25% { transform: translateY(-1px) rotate(2deg); }
+  50% { transform: translateY(0); }
+  75% { transform: translateY(-1px) rotate(-2deg); }
+  100% { transform: translateY(0); }
+}
+
+
+6. Iconography & Assets
+
+A. Icons
+
+Library: lucide-react.
+
+Style: Stroke width 2px (to match pixel borders).
+
+Color: Usually Dark Charcoal (#2d2d2d) or matching the text color.
+
+B. Characters (PixelCritter)
+
+Technology: Inline SVG.
+
+Grid: Based on a 24x24 pixel grid.
+
+Poses:
+
+Happy: Arms raised (v), eyes open.
+
+Walk: Legs offset, slight rotation.
+
+Sleep: Flattened body (__), eyes closed (- -), Zzz particles.
+
+7. Layout Patterns
+
+A. The "Drawer" Pattern (Evidence Bag)
+
+Avoid sidebars for secondary content. Use a bottom drawer that mimics a physical object sliding into view.
+
+Closed: Shows a summary tab (handle).
+
+Open: Slides up (translateY(0)) to reveal content.
+
+B. The "Paper Texture" Pattern
+
+For reading surfaces, apply a subtle CSS pattern to mimic dot-matrix paper or lined stationery.
+
+.paper-texture {
+  background-color: #fdfbf7;
+  background-image: repeating-linear-gradient(transparent, transparent 31px, #e5e7eb 31px, #e5e7eb 32px);
+  background-attachment: local;
+}
+
+
+C. The "Map" Pattern
+
+For the dashboard background, use a grid pattern to simulate a digital map surface.
+
+.map-pattern {
+  background-color: #e5e7eb;
+  background-image: 
+    linear-gradient(#fff 2px, transparent 2px),
+    linear-gradient(90deg, #fff 2px, transparent 2px);
+  background-size: 40px 40px;
+}

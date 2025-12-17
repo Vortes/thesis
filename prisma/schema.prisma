@@ -120,7 +120,7 @@ model Shipment {
 model GiftItem {
   id         String   @id @default(cuid())
   shipmentId String
-  shipment   Shipment @relation(fields: [shipmentId], references: [id])
+  shipment   Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
 
   type GiftType // TEXT, AUDIO, DRAWING
 

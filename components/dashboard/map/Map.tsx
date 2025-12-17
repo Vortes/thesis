@@ -2,14 +2,18 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
-import * as turf from '@turf/turf';
 import { Character } from '@/lib/dashboard-data';
+import { getPositionAlongPath, calculateETA, formatETA, calculateProgress } from './utils/mapUtils';
 import { useRouter } from 'next/navigation';
 import { Progress } from '@/components/ui/progress';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import greatCircle from '@turf/great-circle';
 
 // Set Mapbox access token
-mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
+if (!process.env.NEXT_PUBLIC_MAPBOX_TOKEN) {
+    throw new Error('Missing Mapbox access token');
+}
+mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
 interface MapProps {
     selectedChar: Character | null;
@@ -17,131 +21,24 @@ interface MapProps {
     onSelectChar?: (char: Character) => void;
 }
 
-// Retro map style with muted colors matching the app's pixel aesthetic
-const RETRO_MAP_STYLE: mapboxgl.Style = {
-    version: 8,
-    name: 'Retro Pixel Style',
-    sources: {
-        'osm-tiles': {
-            type: 'raster',
-            tiles: [
-                'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
-            ],
-            tileSize: 256,
-            attribution: '© OpenStreetMap contributors'
-        }
-    },
-    layers: [
-        {
-            id: 'background',
-            type: 'background',
-            paint: {
-                'background-color': '#e0d5c1' // --pixel-card
-            }
-        },
-        {
-            id: 'osm-tiles-layer',
-            type: 'raster',
-            source: 'osm-tiles',
-            paint: {
-                'raster-saturation': -0.7, // Desaturate for retro feel
-                'raster-brightness-min': 0.1,
-                'raster-brightness-max': 0.9,
-                'raster-contrast': 0.1,
-                'raster-hue-rotate': 30 // Warm sepia shift
-            }
-        }
-    ]
-};
-
-// Generate a bezier curve path between two points
-function generateBezierPath(start: [number, number], end: [number, number]): GeoJSON.Feature<GeoJSON.LineString> {
-    // Create control points for a nice arc
-    const midLng = (start[0] + end[0]) / 2;
-    const midLat = (start[1] + end[1]) / 2;
-
-    // Offset the midpoint to create a curve
-    const distance = turf.distance(turf.point(start), turf.point(end));
-    const bearing = turf.bearing(turf.point(start), turf.point(end));
-
-    // Create a control point perpendicular to the line
-    const controlPoint = turf.destination(turf.point([midLng, midLat]), distance * 0.2, bearing + 90);
-
-    // Create a line with the control point for the bezier
-    const line = turf.lineString([start, controlPoint.geometry.coordinates as [number, number], end]);
-
-    // Create bezier curve
-    const bezier = turf.bezierSpline(line, { resolution: 50 });
-    return bezier;
-}
-
-// Get position along a path based on progress (0-100)
-function getPositionAlongPath(path: GeoJSON.Feature<GeoJSON.LineString>, progress: number): [number, number] {
-    const length = turf.length(path);
-    const distance = (progress / 100) * length;
-    const point = turf.along(path, distance);
-    return point.geometry.coordinates as [number, number];
-}
-
 export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelectChar }) => {
     const router = useRouter();
     const mapContainer = useRef<HTMLDivElement>(null);
     const map = useRef<mapboxgl.Map | null>(null);
     const markersRef = useRef<globalThis.Map<string | number, mapboxgl.Marker>>(new globalThis.Map());
-    const pathsRef = useRef(new globalThis.Map<string | number, GeoJSON.Feature<GeoJSON.LineString>>());
+    const pathsRef = useRef(
+        new globalThis.Map<string | number, GeoJSON.Feature<GeoJSON.LineString | GeoJSON.MultiLineString>>()
+    );
     const animationRef = useRef<number | undefined>(undefined);
+    const charactersRef = useRef(characters);
+
+    // Keep characters ref in sync with props to avoid restarting animation loop
+    useEffect(() => {
+        charactersRef.current = characters;
+    }, [characters]);
     const [mapLoaded, setMapLoaded] = useState(false);
     const [currentETA, setCurrentETA] = useState<string | null>(null);
-
-    // Travel time: 1km = 1 minute (60000ms)
-    const TRAVEL_SPEED_MS_PER_KM = 3000;
-
-    // Calculate ETA (remaining time in ms) for a character
-    const calculateETA = (char: Character): number | null => {
-        if (!char.shipmentData) return null;
-        if (char.status !== 'En Route' && char.status !== 'Returning') return null;
-
-        const { dispatchedAt, recalledAt, distanceInKm } = char.shipmentData;
-        const travelTimeMs = (distanceInKm ?? 1000) * TRAVEL_SPEED_MS_PER_KM;
-        const now = Date.now();
-
-        if (char.status === 'Returning' && recalledAt) {
-            // Return trip is 1/4 of time already traveled
-            const timeOutMs = recalledAt - dispatchedAt;
-            const returnTimeMs = timeOutMs / 4;
-            const returnEndTime = recalledAt + returnTimeMs;
-            return Math.max(0, returnEndTime - now);
-        } else {
-            // Normal transit
-            const arrivalTime = dispatchedAt + travelTimeMs;
-            return Math.max(0, arrivalTime - now);
-        }
-    };
-
-    // Format milliseconds to human-readable time (e.g., "5m 30s" or "2h 15m")
-    const formatETA = (ms: number): string => {
-        if (ms <= 0) return 'Arriving...';
-
-        const seconds = Math.floor(ms / 1000);
-        const minutes = Math.floor(seconds / 60);
-        const hours = Math.floor(minutes / 60);
-        const days = Math.floor(hours / 24);
-
-        if (days > 0) {
-            const remainingHours = hours % 24;
-            return `${days}d ${remainingHours}h`;
-        } else if (hours > 0) {
-            const remainingMinutes = minutes % 60;
-            return `${hours}h ${remainingMinutes}m`;
-        } else if (minutes > 0) {
-            const remainingSeconds = seconds % 60;
-            return `${minutes}m ${remainingSeconds}s`;
-        } else {
-            return `${seconds}s`;
-        }
-    };
+    const [currentProgress, setCurrentProgress] = useState<number>(0);
 
     // Initialize map
     useEffect(() => {
@@ -149,10 +46,10 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
 
         map.current = new mapboxgl.Map({
             container: mapContainer.current,
-            style: RETRO_MAP_STYLE,
             center: [0, 20], // Default center
             zoom: 1.5,
-            attributionControl: false
+            attributionControl: false,
+            projection: 'globe' as any // Use globe projection
         });
 
         map.current.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
@@ -171,9 +68,10 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
     useEffect(() => {
         if (!map.current || !mapLoaded) return;
 
-        // Clear old markers
+        // Clear old markers and paths
         markersRef.current.forEach(marker => marker.remove());
         markersRef.current.clear();
+        pathsRef.current.clear();
 
         // Remove old path layers
         characters.forEach(char => {
@@ -196,12 +94,19 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
                 const startCoords: [number, number] = [char.originCoords.lng, char.originCoords.lat];
                 const endCoords: [number, number] = [char.destCoords.lng, char.destCoords.lat];
 
-                // Generate and draw the path
-                const path = generateBezierPath(startCoords, endCoords);
+                // Generate the path - this is the SAME path used for both visual and animation
+                // Generate great circle arc with many points so marker follows the curved path
+                const path = greatCircle(startCoords, endCoords, { npoints: 100 });
                 pathsRef.current.set(char.id, path);
                 const sourceId = `path-${char.id}`;
 
-                if (!map.current?.getSource(sourceId)) {
+                const existingSource = map.current?.getSource(sourceId) as mapboxgl.GeoJSONSource | undefined;
+
+                if (existingSource) {
+                    // Update existing source with new path data to keep visual and animation in sync
+                    existingSource.setData(path);
+                } else {
+                    // Create new source and layer
                     map.current?.addSource(sourceId, {
                         type: 'geojson',
                         data: path
@@ -212,15 +117,14 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
                         type: 'line',
                         source: sourceId,
                         paint: {
-                            'line-color': char.status === 'Returning' ? '#fbbf24' : char.color,
-                            'line-width': 3,
-                            'line-dasharray': [2, 2],
-                            'line-opacity': 0.7
+                            'line-color': char.status === 'Returning' ? '#fbbf24' : '#007cbf',
+                            'line-width': 2,
+                            'line-emissive-strength': 1
                         }
                     });
                 }
 
-                // Calculate initial progress
+                // Calculate initial progress and position along the SAME path
                 const progress = calculateProgress(char);
                 markerCoords = getPositionAlongPath(path, progress);
             } else {
@@ -285,49 +189,12 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
 
             markersRef.current.set(char.id, marker);
         });
-
-        // Fit map to show all markers
-        if (characters.length > 0) {
-            const bounds = new mapboxgl.LngLatBounds();
-            characters.forEach(char => {
-                bounds.extend([char.coords.lng, char.coords.lat]);
-                if (char.destCoords) {
-                    bounds.extend([char.destCoords.lng, char.destCoords.lat]);
-                }
-            });
-            map.current?.fitBounds(bounds, { padding: 80, maxZoom: 4 });
-        }
     }, [characters, mapLoaded, onSelectChar, router]);
-
-    // Calculate progress based on shipment data
-    const calculateProgress = (char: Character): number => {
-        if (!char.shipmentData) return 0;
-
-        const { dispatchedAt, recalledAt, distanceInKm } = char.shipmentData;
-        const travelTimeMs = (distanceInKm ?? 1000) * TRAVEL_SPEED_MS_PER_KM;
-
-        if (char.status === 'Returning' && recalledAt) {
-            // Return trip is 1/4 of time already traveled
-            const timeOutMs = recalledAt - dispatchedAt;
-            const returnTimeMs = timeOutMs / 4;
-            const returnElapsedMs = Date.now() - recalledAt;
-            // Progress inverts (100% at recall point, 0% at origin)
-            const progressOut = Math.min(100, (timeOutMs / travelTimeMs) * 100);
-            const returnProgress = Math.min(100, (returnElapsedMs / returnTimeMs) * 100);
-            return Math.max(0, progressOut * (1 - returnProgress / 100));
-        } else {
-            // Normal transit
-            const elapsedMs = Date.now() - dispatchedAt;
-            return Math.min(100, (elapsedMs / travelTimeMs) * 100);
-        }
-    };
 
     // Animation loop for moving markers
     useEffect(() => {
-        if (!mapLoaded) return;
-
         const animate = () => {
-            characters.forEach(char => {
+            charactersRef.current.forEach(char => {
                 const isMoving = char.status === 'En Route' || char.status === 'Returning';
                 if (!isMoving || !char.shipmentData) return;
 
@@ -349,40 +216,62 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
                 cancelAnimationFrame(animationRef.current);
             }
         };
-    }, [characters, mapLoaded]);
+    }, []);
 
     // Pan to selected character
     useEffect(() => {
         if (!map.current || !selectedChar || !mapLoaded) return;
 
+        let targetCenter: [number, number] = [selectedChar.coords.lng, selectedChar.coords.lat];
+        const isMoving = selectedChar.status === 'En Route' || selectedChar.status === 'Returning';
+
+        // If character is moving, calculate their current position
+        if (isMoving && selectedChar.shipmentData && selectedChar.originCoords && selectedChar.destCoords) {
+            let path = pathsRef.current.get(selectedChar.id);
+
+            // Fallback: generate path if it doesn't exist in ref yet
+            if (!path) {
+                const startCoords: [number, number] = [selectedChar.originCoords.lng, selectedChar.originCoords.lat];
+                const endCoords: [number, number] = [selectedChar.destCoords.lng, selectedChar.destCoords.lat];
+                path = greatCircle(startCoords, endCoords, { npoints: 100 });
+            }
+
+            if (path) {
+                const progress = calculateProgress(selectedChar);
+                targetCenter = getPositionAlongPath(path, progress);
+            }
+        }
+
         map.current.flyTo({
-            center: [selectedChar.coords.lng, selectedChar.coords.lat],
-            zoom: 4,
+            center: targetCenter,
+            zoom: 8,
             duration: 1000
         });
     }, [selectedChar, mapLoaded]);
 
-    // Update ETA for selected character
+    // Update ETA and progress for selected character (client-side only to avoid hydration mismatch)
     useEffect(() => {
         if (!selectedChar) {
             setCurrentETA(null);
+            setCurrentProgress(0);
             return;
         }
 
         const isMoving = selectedChar.status === 'En Route' || selectedChar.status === 'Returning';
-        if (!isMoving) {
-            setCurrentETA(null);
-            return;
-        }
 
-        // Update ETA immediately and then every second
-        const updateETA = () => {
-            const eta = calculateETA(selectedChar);
-            setCurrentETA(eta !== null ? formatETA(eta) : null);
+        // Update progress and ETA immediately and then every second
+        const update = () => {
+            setCurrentProgress(calculateProgress(selectedChar));
+            if (isMoving) {
+                const eta = calculateETA(selectedChar);
+                setCurrentETA(eta !== null ? formatETA(eta) : null);
+            } else {
+                setCurrentETA(null);
+            }
         };
 
-        updateETA();
-        const interval = setInterval(updateETA, 1000);
+        update();
+        const interval = setInterval(update, 1000);
 
         return () => clearInterval(interval);
     }, [selectedChar]);
@@ -429,10 +318,7 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
                             </div>
                         )}
                         {selectedChar.status !== 'Ready' && (
-                            <Progress
-                                value={selectedChar.progress}
-                                className="mt-2 h-2 bg-gray-200 border border-gray-400"
-                            />
+                            <Progress value={currentProgress} className="mt-2 h-2 bg-gray-200 border border-gray-400" />
                         )}
                     </div>
 
