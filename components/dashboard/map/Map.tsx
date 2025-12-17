@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import { Character } from '@/lib/dashboard-data';
-import { getPositionAlongPath, calculateETA, formatETA, calculateProgress } from './utils/mapUtils';
+import { getPositionAlongPath, calculateETA, formatETA, calculateProgress, updateRouteStyles } from './utils/mapUtils';
 import { useRouter } from 'next/navigation';
 import { Progress } from '@/components/ui/progress';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -31,14 +31,17 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
     );
     const animationRef = useRef<number | undefined>(undefined);
     const charactersRef = useRef(characters);
+    const eventHandlersRef = useRef<
+        globalThis.Map<string, { mouseenter: () => void; mouseleave: () => void; click: () => void }>
+    >(new globalThis.Map());
 
-    // Keep characters ref in sync with props to avoid restarting animation loop
-    useEffect(() => {
-        charactersRef.current = characters;
-    }, [characters]);
+    // Keep characters ref in sync with props (no Effect needed - refs don't trigger re-renders)
+    charactersRef.current = characters;
+
     const [mapLoaded, setMapLoaded] = useState(false);
     const [currentETA, setCurrentETA] = useState<string | null>(null);
     const [currentProgress, setCurrentProgress] = useState<number>(0);
+    const [hoveredCharId, setHoveredCharId] = useState<string | number | null>(null);
 
     // Initialize map
     useEffect(() => {
@@ -73,10 +76,24 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
         markersRef.current.clear();
         pathsRef.current.clear();
 
-        // Remove old path layers
+        // Clean up event handlers and remove old path layers
         characters.forEach(char => {
             const sourceId = `path-${char.id}`;
+            const hitAreaId = `${sourceId}-hitarea`;
+
+            // Remove event listeners using stored handlers
+            const handlers = eventHandlersRef.current.get(hitAreaId);
+            if (handlers && map.current) {
+                map.current.off('mouseenter', hitAreaId, handlers.mouseenter);
+                map.current.off('mouseleave', hitAreaId, handlers.mouseleave);
+                map.current.off('click', hitAreaId, handlers.click);
+                eventHandlersRef.current.delete(hitAreaId);
+            }
+
             if (map.current?.getSource(sourceId)) {
+                if (map.current.getLayer(hitAreaId)) {
+                    map.current.removeLayer(hitAreaId);
+                }
                 map.current.removeLayer(`${sourceId}-line`);
                 map.current.removeSource(sourceId);
             }
@@ -122,6 +139,57 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
                             'line-emissive-strength': 1
                         }
                     });
+
+                    // Add invisible wider hit-area layer for easier hover/click
+                    map.current?.addLayer({
+                        id: `${sourceId}-hitarea`,
+                        type: 'line',
+                        source: sourceId,
+                        paint: {
+                            'line-color': 'transparent',
+                            'line-width': 20,
+                            'line-opacity': 0
+                        }
+                    });
+
+                    const hitAreaId = `${sourceId}-hitarea`;
+
+                    // Create named handlers for proper cleanup
+                    const handleMouseEnter = () => {
+                        if (map.current) {
+                            map.current.getCanvas().style.cursor = 'pointer';
+                        }
+                        setHoveredCharId(char.id);
+                        updateRouteStyles(map.current, charactersRef.current, char.id, selectedChar?.id);
+                    };
+
+                    const handleMouseLeave = () => {
+                        if (map.current) {
+                            map.current.getCanvas().style.cursor = '';
+                        }
+                        setHoveredCharId(null);
+                        updateRouteStyles(map.current, charactersRef.current, null, selectedChar?.id);
+                    };
+
+                    const handleClick = () => {
+                        if (onSelectChar) {
+                            onSelectChar(char);
+                        } else {
+                            router.push(`/?charId=${char.id}`);
+                        }
+                    };
+
+                    // Store handlers for cleanup
+                    eventHandlersRef.current.set(hitAreaId, {
+                        mouseenter: handleMouseEnter,
+                        mouseleave: handleMouseLeave,
+                        click: handleClick
+                    });
+
+                    // Add event listeners
+                    map.current?.on('mouseenter', hitAreaId, handleMouseEnter);
+                    map.current?.on('mouseleave', hitAreaId, handleMouseLeave);
+                    map.current?.on('click', hitAreaId, handleClick);
                 }
 
                 // Calculate initial progress and position along the SAME path
@@ -178,6 +246,17 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
                     // Default behavior: navigate to select this character
                     router.push(`/?charId=${char.id}`);
                 }
+            });
+
+            // Add hover event listeners for route highlighting
+            markerEl.addEventListener('mouseenter', () => {
+                setHoveredCharId(char.id);
+                updateRouteStyles(map.current, charactersRef.current, char.id, selectedChar?.id);
+            });
+
+            markerEl.addEventListener('mouseleave', () => {
+                setHoveredCharId(null);
+                updateRouteStyles(map.current, charactersRef.current, null, selectedChar?.id);
             });
 
             const marker = new mapboxgl.Marker({
@@ -248,6 +327,12 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
             duration: 1000
         });
     }, [selectedChar, mapLoaded]);
+
+    // Update route styles when selected character changes
+    useEffect(() => {
+        if (!map.current || !mapLoaded) return;
+        updateRouteStyles(map.current, charactersRef.current, hoveredCharId, selectedChar?.id);
+    }, [selectedChar?.id, mapLoaded, hoveredCharId]);
 
     // Update ETA and progress for selected character (client-side only to avoid hydration mismatch)
     useEffect(() => {

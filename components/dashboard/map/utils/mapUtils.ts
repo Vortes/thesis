@@ -1,8 +1,43 @@
 import { Character } from '@/lib/dashboard-data';
 import along from '@turf/along';
 import length from '@turf/length';
+import mapboxgl from 'mapbox-gl';
 
-const TRAVEL_SPEED_MS_PER_KM = 1000;
+const TRAVEL_SPEED_MS_PER_KM = 300;
+
+/**
+ * Update route styling based on hover and selection state - bolds selected/hovered routes and dims others
+ */
+export function updateRouteStyles(
+    map: mapboxgl.Map | null,
+    characters: Character[],
+    newHoveredId: string | number | null,
+    selectedId?: string | number | null
+): void {
+    if (!map) return;
+
+    characters.forEach(char => {
+        const sourceId = `path-${char.id}`;
+        const layerId = `${sourceId}-line`;
+
+        if (!map.getLayer(layerId)) return;
+
+        const isHovered = newHoveredId === char.id;
+        const isSelected = selectedId === char.id;
+        const hasHoveredItem = newHoveredId !== null;
+
+        if (isHovered || isSelected) {
+            map.setPaintProperty(layerId, 'line-width', 4);
+            map.setPaintProperty(layerId, 'line-opacity', 1);
+        } else if (hasHoveredItem) {
+            map.setPaintProperty(layerId, 'line-width', 1.5);
+            map.setPaintProperty(layerId, 'line-opacity', 0.3);
+        } else {
+            map.setPaintProperty(layerId, 'line-width', 2);
+            map.setPaintProperty(layerId, 'line-opacity', 1);
+        }
+    });
+}
 
 /**
  * Get position along a path based on progress (0-100)
