@@ -6,14 +6,11 @@ import { VoiceRecorder } from './VoiceRecorder';
 import { DrawingPad } from './DrawingPad';
 import { useRouter } from 'next/navigation';
 import { ComposeHeader } from './ComposeHeader';
-import { LetterArea } from './LetterArea';
-import { Toolkit } from './Toolkit';
-import { SendingView } from './SendingView';
+import { ComposeLetterWrapper } from './ComposeLetterWrapper';
+import { SendingView } from './SendingView'; // Not used internally anymore? Wait, Compose uses SentView. ComposeLetterWrapper uses SendingView.
+// Actually Compose only needs SentView. SendingView is inside wrapper.
 import { SentView } from './SentView';
-import { useUploadThing } from '@/lib/uploadthing';
-import { saveDraft, getDraft, saveAttachment, getAttachments, clearDrafts, deleteAttachment } from '@/lib/db';
-import { createShipment } from '@/app/actions/shipment';
-import { GiftType } from '@prisma/client';
+import { saveAttachment, getAttachments, deleteAttachment } from '@/lib/db';
 import { Mic } from 'lucide-react';
 
 interface ComposeProps {
@@ -22,21 +19,17 @@ interface ComposeProps {
 
 export const Compose = ({ selectedChar }: ComposeProps) => {
     const router = useRouter();
-    const [composeMessage, setComposeMessage] = useState('');
     const [attachedItems, setAttachedItems] = useState<any[]>([]);
-    const [isSealed, setIsSealed] = useState(false);
     const [activeTool, setActiveTool] = useState<string | null>(null);
 
-    const [view, setView] = useState<'compose' | 'sending' | 'sent'>('compose');
+    const [view, setView] = useState<'compose' | 'sent'>('compose');
 
     // Load drafts on character change
     useEffect(() => {
         const loadDrafts = async () => {
             if (!selectedChar?.id) return;
 
-            const draft = await getDraft(String(selectedChar.id));
-            if (draft) setComposeMessage(draft.text);
-            else setComposeMessage('');
+            // Text draft loading moved to ComposeLetterWrapper
 
             const attachments = await getAttachments(String(selectedChar.id));
             if (attachments) {
@@ -53,104 +46,13 @@ export const Compose = ({ selectedChar }: ComposeProps) => {
         loadDrafts();
     }, [selectedChar.id]);
 
-    // Auto-save text draft
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            if (selectedChar?.id) {
-                saveDraft(String(selectedChar.id), composeMessage);
-            }
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [composeMessage, selectedChar.id]);
-
-    // Handle the sending flow
-    useEffect(() => {
-        if (isSealed && view === 'compose') {
-            // Start the visual transition
-            const timer1 = setTimeout(() => {
-                setView('sending');
-            }, 1500);
-            return () => clearTimeout(timer1);
-        }
-    }, [isSealed, view]);
-
-    const { startUpload } = useUploadThing('shipmentUploader');
-
-    const handleComposeSend = async () => {
-        setIsSealed(true);
-
-        try {
-            const filesToUpload: File[] = [];
-            const shipmentItems: { type: GiftType; content: string }[] = [];
-
-            // 1. Prepare Text
-            if (composeMessage.trim()) {
-                const textFile = new File([composeMessage], 'message.txt', { type: 'text/plain' });
-                filesToUpload.push(textFile);
-                // We'll map this back by index or type, but for now let's assume order is preserved
-                // Actually, better to wait for upload results.
-            }
-
-            // 2. Prepare Attachments (Voice, etc)
-            // We need to fetch the blobs from IDB if they aren't in memory (though VoiceRecorder passes them up)
-            // For now, let's assume attachedItems contains the blob if it's a new recording.
-            // If it was loaded from IDB, we might need to fetch it again if we didn't keep the blob in state.
-            // Let's rely on `attachedItems` having the blob for now.
-
-            for (const item of attachedItems) {
-                if (item.type === 'voice' && item.blob) {
-                    const file = new File([item.blob], `voice-${item.id}.webm`, { type: 'audio/webm' });
-                    filesToUpload.push(file);
-                }
-                // Add other types here
-            }
-
-            // 3. Upload All Files
-            let uploadedUrls: string[] = [];
-            if (filesToUpload.length > 0) {
-                const uploadRes = await startUpload(filesToUpload, { recipientId: selectedChar.recipientId });
-                if (!uploadRes) throw new Error('Upload failed');
-                uploadedUrls = uploadRes.map(r => r.url);
-            }
-
-            // 4. Construct Shipment Items
-            // This is a bit tricky: mapping URLs back to types.
-            // Since we uploaded [Text, Voice1, Voice2...], we can shift them off.
-
-            let urlIndex = 0;
-            if (composeMessage.trim()) {
-                shipmentItems.push({ type: 'TEXT', content: uploadedUrls[urlIndex++] });
-            }
-
-            for (const item of attachedItems) {
-                if (item.type === 'voice') {
-                    shipmentItems.push({ type: 'AUDIO', content: uploadedUrls[urlIndex++] });
-                }
-            }
-
-            // 5. Call Server Action
-            const result = await createShipment(selectedChar.recipientId, shipmentItems);
-
-            if (result.success) {
-                // 6. Cleanup
-                await clearDrafts(String(selectedChar.id));
-                setView('sent');
-                setTimeout(() => {
-                    setComposeMessage('');
-                    setAttachedItems([]);
-                    setIsSealed(false);
-                    setView('compose'); // Reset view for next time
-                    router.push('/');
-                }, 2500);
-            } else {
-                throw new Error(result.error);
-            }
-        } catch (error) {
-            console.error('Send failed:', error);
-            setIsSealed(false);
-            setView('compose');
-            // Show error toast
-        }
+    const handleSent = () => {
+        setView('sent');
+        setTimeout(() => {
+            setAttachedItems([]);
+            setView('compose'); // Reset view for next time
+            router.push('/');
+        }, 2500);
     };
 
     const handleToolClick = (toolId: string) => {
@@ -204,29 +106,14 @@ export const Compose = ({ selectedChar }: ComposeProps) => {
                     <ComposeHeader onBack={() => router.back()} />
 
                     {view === 'compose' && (
-                        <div className="flex flex-col md:flex-row gap-6 h-full flex-grow">
-                            {/* Left Side: The Letter */}
-                            <LetterArea
-                                message={composeMessage}
-                                setMessage={setComposeMessage}
-                                attachedItems={attachedItems}
-                                onRemoveItem={removeItem}
-                                isSealed={isSealed}
-                            />
-
-                            {/* Right Side: Tools Pouch */}
-                            <Toolkit
-                                onToolClick={handleToolClick}
-                                attachedItemsCount={attachedItems.length}
-                                onSend={handleComposeSend}
-                                canSend={composeMessage.length > 0}
-                                isSealed={isSealed}
-                            />
-                        </div>
+                        <ComposeLetterWrapper
+                            selectedChar={selectedChar}
+                            attachedItems={attachedItems}
+                            onRemoveItem={removeItem}
+                            onToolClick={handleToolClick}
+                            onSent={handleSent}
+                        />
                     )}
-
-                    {/* View: Sealed / Sending */}
-                    {view === 'sending' && <SendingView />}
 
                     {/* View: Sent Success */}
                     {view === 'sent' && <SentView />}

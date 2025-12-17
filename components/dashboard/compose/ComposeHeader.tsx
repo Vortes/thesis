@@ -6,6 +6,7 @@ interface ComposeHeaderProps {
 }
 
 export const ComposeHeader: React.FC<ComposeHeaderProps> = ({ onBack }) => {
+    console.log('re-rendering');
     return (
         <div className="flex justify-between items-center bg-[#5e4c35] p-3 pixel-border-sm text-[#e0d5c1]">
             <button
