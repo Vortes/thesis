@@ -3,6 +3,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { GiftType, MessengerStatus } from '@prisma/client';
+import { revalidatePath } from 'next/cache';
 
 interface CreateShipmentItem {
     type: GiftType;
@@ -54,14 +55,20 @@ export async function createShipment(recipientId: string, items: CreateShipmentI
 
         const messenger = connection.messenger;
 
-        // Verify messenger is available
-        if (messenger.status !== MessengerStatus.AVAILABLE) {
-            return { success: false, error: `Messenger is currently ${messenger.status.toLowerCase()}` };
-        }
-
         // Verify current user is the one who can send (has the messenger)
         if (messenger.currentHolderId && messenger.currentHolderId !== userId) {
             return { success: false, error: 'Messenger is not at your location' };
+        }
+
+        // Verify messenger is in a sendable state:
+        // - AVAILABLE: ready for new shipment
+        // - WAITING: recipient is replying after opening a shipment
+        const canSend =
+            messenger.status === MessengerStatus.AVAILABLE ||
+            (messenger.status === MessengerStatus.WAITING && messenger.currentHolderId === userId);
+
+        if (!canSend) {
+            return { success: false, error: `Messenger is currently ${messenger.status.toLowerCase()}` };
         }
 
         // Get sender and recipient coordinates
@@ -112,6 +119,7 @@ export async function createShipment(recipientId: string, items: CreateShipmentI
             });
         });
 
+        revalidatePath('/');
         return { success: true };
     } catch (error) {
         console.error('Failed to create shipment:', error);

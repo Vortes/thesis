@@ -1,9 +1,8 @@
 import { Character } from '@/lib/dashboard-data';
 import along from '@turf/along';
 import length from '@turf/length';
-import mapboxgl from 'mapbox-gl';
 
-const TRAVEL_SPEED_MS_PER_KM = 300;
+const TRAVEL_SPEED_MS_PER_KM = 30;
 
 /**
  * Update route styling based on hover and selection state - bolds selected/hovered routes and dims others

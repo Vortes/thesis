@@ -8,6 +8,8 @@ import { useRouter } from 'next/navigation';
 import { Progress } from '@/components/ui/progress';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import greatCircle from '@turf/great-circle';
+import { arriveShipment } from '@/app/actions/arrive-shipment';
+import { completeReturn } from '@/app/actions/recall-shipment';
 
 // Set Mapbox access token
 if (!process.env.NEXT_PUBLIC_MAPBOX_TOKEN) {
@@ -42,6 +44,7 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
     const [currentETA, setCurrentETA] = useState<string | null>(null);
     const [currentProgress, setCurrentProgress] = useState<number>(0);
     const [hoveredCharId, setHoveredCharId] = useState<string | number | null>(null);
+    const arrivedShipmentsRef = useRef<Set<string>>(new Set());
 
     // Initialize map
     useEffect(() => {
@@ -284,6 +287,22 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
                 const progress = calculateProgress(char);
                 const newPos = getPositionAlongPath(path, progress);
                 marker.setLngLat(newPos);
+
+                // Check if shipment has arrived (progress >= 100%)
+                if (progress >= 100 && !arrivedShipmentsRef.current.has(char.shipmentData.shipmentId)) {
+                    arrivedShipmentsRef.current.add(char.shipmentData.shipmentId);
+
+                    // Call the appropriate action based on status
+                    if (char.status === 'En Route') {
+                        arriveShipment(char.shipmentData.shipmentId).then(() => {
+                            router.refresh();
+                        });
+                    } else if (char.status === 'Returning') {
+                        completeReturn(char.shipmentData.shipmentId).then(() => {
+                            router.refresh();
+                        });
+                    }
+                }
             });
 
             animationRef.current = requestAnimationFrame(animate);
@@ -295,7 +314,7 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
                 cancelAnimationFrame(animationRef.current);
             }
         };
-    }, []);
+    }, [router]);
 
     // Pan to selected character
     useEffect(() => {
@@ -323,8 +342,8 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
 
         map.current.flyTo({
             center: targetCenter,
-            zoom: 8,
-            duration: 1000
+            zoom: 10,
+            duration: 2100
         });
     }, [selectedChar, mapLoaded]);
 
@@ -384,15 +403,24 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
                     <div className="flex-1">
                         <h3 className="font-pixel text-sm flex items-center gap-2">
                             {selectedChar.name}
-                            {selectedChar.status === 'Ready' && (
+                            {selectedChar.status === 'Ready' && selectedChar.canSend && (
                                 <span className="bg-red-500 text-white text-[8px] px-1 py-0.5 rounded">READY!</span>
+                            )}
+                            {selectedChar.status === 'Waiting' && selectedChar.canSend && (
+                                <span className="bg-yellow-500 text-black text-[8px] px-1 py-0.5 rounded">NEW GIFT!</span>
                             )}
                         </h3>
                         <p className="font-handheld text-lg text-gray-600">
                             {selectedChar.status === 'Ready'
-                                ? 'Waiting for orders at base.'
+                                ? selectedChar.canSend
+                                    ? 'Waiting for orders at base.'
+                                    : `Currently with ${selectedChar.holderName ?? selectedChar.destination}.`
                                 : selectedChar.status === 'Waiting'
-                                ? 'Waiting for a reply...'
+                                ? selectedChar.canSend
+                                    ? 'Gift arrived! Open it!'
+                                    : `Waiting for ${selectedChar.destination} to reply...`
+                                : selectedChar.destination === 'You'
+                                ? 'Currently traveling to you!'
                                 : `Currently traveling to ${selectedChar.destination}.`}
                         </p>
                         {/* ETA Display */}
@@ -402,19 +430,27 @@ export const Map: React.FC<MapProps> = ({ selectedChar, characters = [], onSelec
                                 <span className="font-pixel text-[10px] text-pixel-accent">{currentETA}</span>
                             </div>
                         )}
-                        {selectedChar.status !== 'Ready' && (
+                        {selectedChar.status !== 'Ready' && selectedChar.status !== 'Waiting' && (
                             <Progress value={currentProgress} className="mt-2 h-2 bg-gray-200 border border-gray-400" />
                         )}
                     </div>
 
-                    {/* Action Button */}
+                    {/* Action Buttons */}
                     <button
                         onClick={() => router.push(`/${selectedChar.id}/history`)}
                         className="bg-gray-200 text-gray-600 px-4 py-2 font-pixel text-[10px] pixel-border-sm hover:bg-gray-300 hover:cursor-pointer"
                     >
                         VIEW HISTORY
                     </button>
-                    {selectedChar.canSend && (
+                    {selectedChar.status === 'Waiting' && selectedChar.canSend && (
+                        <button
+                            onClick={() => router.push(`/${selectedChar.id}/open`)}
+                            className="bg-[#facc15] text-black px-4 py-2 font-pixel text-[10px] pixel-border-sm animate-bounce-sm hover:cursor-pointer hover:bg-[#eab308]"
+                        >
+                            OPEN GIFT
+                        </button>
+                    )}
+                    {selectedChar.status === 'Ready' && selectedChar.canSend && (
                         <button
                             onClick={() => router.push(`/${selectedChar.id}/compose`)}
                             className="bg-[#ef4444] text-white px-4 py-2 font-pixel text-[10px] pixel-border-sm animate-bounce-sm hover:cursor-pointer hover:bg-[#ef2222]"

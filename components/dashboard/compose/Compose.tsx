@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Character, TOOLS } from '@/lib/dashboard-data';
 import { VoiceRecorder } from './VoiceRecorder';
 import { DrawingPad } from './DrawingPad';
@@ -11,7 +11,7 @@ import { SendingView } from './SendingView'; // Not used internally anymore? Wai
 // Actually Compose only needs SentView. SendingView is inside wrapper.
 import { SentView } from './SentView';
 import { saveAttachment, getAttachments, deleteAttachment } from '@/lib/db';
-import { Mic } from 'lucide-react';
+import { Mic, Image as ImageIcon } from 'lucide-react';
 
 interface ComposeProps {
     selectedChar: Character;
@@ -21,6 +21,7 @@ export const Compose = ({ selectedChar }: ComposeProps) => {
     const router = useRouter();
     const [attachedItems, setAttachedItems] = useState<any[]>([]);
     const [activeTool, setActiveTool] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [view, setView] = useState<'compose' | 'sent'>('compose');
 
@@ -34,10 +35,20 @@ export const Compose = ({ selectedChar }: ComposeProps) => {
             const attachments = await getAttachments(String(selectedChar.id));
             if (attachments) {
                 // Reconstruct icons since IDB doesn't store React elements
-                const hydrated = attachments.map((item: any) => ({
-                    ...item,
-                    icon: item.type === 'voice' ? <Mic size={16} /> : item.icon // Add other types as needed
-                }));
+                const hydrated = attachments.map((item: any) => {
+                    let previewUrl = item.previewUrl;
+
+                    // If we have a stored file/blob but no previewUrl (because blob: URLs are revoked/lost on reload), create one
+                    if (item.type === 'photo' && item.file instanceof Blob) {
+                        previewUrl = URL.createObjectURL(item.file);
+                    }
+
+                    return {
+                        ...item,
+                        previewUrl,
+                        icon: item.type === 'voice' ? <Mic size={16} /> : <ImageIcon size={16} /> // Add other types as needed
+                    };
+                });
                 setAttachedItems(hydrated);
             } else {
                 setAttachedItems([]);
@@ -58,6 +69,8 @@ export const Compose = ({ selectedChar }: ComposeProps) => {
     const handleToolClick = (toolId: string) => {
         if (toolId === 'voice' || toolId === 'drawing') {
             setActiveTool(toolId);
+        } else if (toolId === 'photo') {
+            fileInputRef.current?.click();
         } else {
             // Fallback for other tools
             const tool = TOOLS.find(t => t.id === toolId);
@@ -67,13 +80,43 @@ export const Compose = ({ selectedChar }: ComposeProps) => {
         }
     };
 
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            alert('Please select an image file');
+            return;
+        }
+
+        const previewUrl = URL.createObjectURL(file);
+        const newItem = {
+            id: Date.now(),
+            type: 'photo',
+            name: 'Photo',
+            file: file, // Store file for upload later
+            previewUrl: previewUrl,
+            detail: 'Photo',
+            icon: <ImageIcon size={16} />
+        };
+
+        await handleSaveAttachment(newItem);
+        // Reset input
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
     const handleSaveAttachment = async (item: any) => {
         // Save to IDB (exclude non-serializable icon)
+        // We persist the file object (Blob) to IDB.
+        // We DON'T persist previewUrl because blob: schemas are temporary.
+        // We will regenerate it on load.
+
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { icon, ...itemForDb } = item;
+        const { icon, previewUrl, ...itemForDb } = item;
+
         await saveAttachment({ ...itemForDb, messengerId: String(selectedChar.id) });
 
-        // State keeps the icon for rendering
+        // State keeps the icon and previewUrl for rendering
         setAttachedItems(prev => [...prev, item]);
         setActiveTool(null);
     };
@@ -85,6 +128,8 @@ export const Compose = ({ selectedChar }: ComposeProps) => {
 
     return (
         <div className="relative z-10 w-full h-full flex flex-col">
+            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+
             {/* --- OVERLAYS (Modals) --- */}
             {activeTool === 'voice' && (
                 <VoiceRecorder onSave={handleSaveAttachment} onCancel={() => setActiveTool(null)} />

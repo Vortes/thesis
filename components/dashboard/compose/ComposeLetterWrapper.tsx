@@ -70,38 +70,48 @@ export const ComposeLetterWrapper = ({
             const filesToUpload: File[] = [];
             const shipmentItems: { type: GiftType; content: string }[] = [];
 
-            // 1. Prepare Text
+            // 1. Prepare Text as file for upload
             if (composeMessage.trim()) {
                 const textFile = new File([composeMessage], 'message.txt', { type: 'text/plain' });
                 filesToUpload.push(textFile);
             }
 
-            // 2. Prepare Attachments
+            // 2. Prepare Attachments for upload
             for (const item of attachedItems) {
                 if (item.type === 'voice' && item.blob) {
                     const file = new File([item.blob], `voice-${item.id}.webm`, { type: 'audio/webm' });
                     filesToUpload.push(file);
+                } else if (item.type === 'photo' && item.file) {
+                    filesToUpload.push(item.file);
                 }
                 // Add other types here as needed
             }
 
-            // 3. Upload All Files
+            // 3. Upload all files
             let uploadedUrls: string[] = [];
             if (filesToUpload.length > 0) {
+                console.log('Starting upload with:', {
+                    files: filesToUpload.map(f => ({ name: f.name, type: f.type, size: f.size })),
+                    recipientId: selectedChar.recipientId
+                });
+
                 const uploadRes = await startUpload(filesToUpload, { recipientId: selectedChar.recipientId });
+                console.log('Upload result:', uploadRes);
+
                 if (!uploadRes) throw new Error('Upload failed');
                 uploadedUrls = uploadRes.map(r => r.url);
             }
 
-            // 4. Construct Shipment Items
+            // 4. Construct shipment items from uploaded URLs
             let urlIndex = 0;
             if (composeMessage.trim()) {
                 shipmentItems.push({ type: 'TEXT', content: uploadedUrls[urlIndex++] });
             }
-
             for (const item of attachedItems) {
                 if (item.type === 'voice') {
                     shipmentItems.push({ type: 'AUDIO', content: uploadedUrls[urlIndex++] });
+                } else if (item.type === 'photo') {
+                    shipmentItems.push({ type: 'PHOTO', content: uploadedUrls[urlIndex++] });
                 }
             }
 

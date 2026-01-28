@@ -9,7 +9,8 @@ interface SidebarItemProps {
 }
 
 export const SidebarItem: React.FC<SidebarItemProps> = ({ char, isSelected, onClick }) => {
-    const isReady = char.status === 'Ready';
+    const isReady = char.status === 'Ready' && char.canSend;
+    const hasGift = char.status === 'Waiting' && char.canSend;
 
     return (
         <button
@@ -18,6 +19,8 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({ char, isSelected, onCl
                 ${
                     isSelected
                         ? 'bg-pixel-accent text-black -translate-y-1'
+                        : hasGift
+                        ? 'bg-yellow-100 hover:bg-yellow-200'
                         : isReady
                         ? 'bg-yellow-50 hover:bg-yellow-100'
                         : 'bg-[#fdfbf7] text-gray-700 hover:bg-gray-50'
@@ -43,7 +46,15 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({ char, isSelected, onCl
                     )}
                 </div>
                 <span className="font-handheld text-sm opacity-70 truncate uppercase">
-                    {char.status === 'Ready' ? 'AVAILABLE' : `${char.status} > ${char.destination}`}
+                    {char.status === 'Ready'
+                        ? char.holderName
+                            ? `WITH ${char.holderName}`
+                            : 'AVAILABLE'
+                        : char.status === 'Waiting'
+                        ? char.canSend
+                            ? 'GIFT ARRIVED!'
+                            : `WITH ${char.destination}`
+                        : `${char.status} > ${char.destination}`}
                 </span>
             </div>
 

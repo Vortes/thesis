@@ -7,6 +7,7 @@ export interface Character {
     name: string;
     status: 'Ready' | 'En Route' | 'Waiting' | 'Returning' | 'Loading';
     destination: string;
+    holderName?: string; // Name of the person who currently has the messenger
     progress: number; // Deprecated: will be calculated on frontend
     color: string;
     skinId?: string; // Messenger sprite/icon identifier

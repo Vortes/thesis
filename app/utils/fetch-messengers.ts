@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { Character } from '@/lib/dashboard-data';
 import { MessengerStatus } from '@prisma/client';
+import { syncArrivedShipments } from '@/app/actions/arrive-shipment';
 
 // Map MessengerStatus to Character status
 function mapStatus(status: MessengerStatus): Character['status'] {
@@ -43,6 +44,10 @@ export const fetchMessengers = async () => {
         return [];
     }
 
+    // Sync any shipments that should have arrived based on time
+    // This ensures the database is up-to-date when recipient refreshes
+    await syncArrivedShipments(dbUser.id);
+
     // Fetch connections with messenger, both users, and current shipment
     const connections = await prisma.connection.findMany({
         where: {
@@ -70,12 +75,17 @@ export const fetchMessengers = async () => {
             const friend = c.initiatorId === dbUser.id ? c.recipient : c.initiator;
 
             // Determine if current user can send with this messenger
-            // They can send if messenger is AVAILABLE and either:
+            // They can send if messenger is AVAILABLE or WAITING and either:
             // - currentHolderId is null (first time) or matches current user
-            // - OR messenger has no currentHolderId set (initial state)
             const canSend =
-                m.status === MessengerStatus.AVAILABLE &&
+                (m.status === MessengerStatus.AVAILABLE || m.status === MessengerStatus.WAITING) &&
                 (m.currentHolderId === null || m.currentHolderId === dbUser.id);
+
+            // Determine who currently holds the messenger (for display)
+            let holderName: string | undefined;
+            if (m.currentHolderId && m.currentHolderId !== dbUser.id) {
+                holderName = friend.first_name ?? 'Friend';
+            }
 
             // Determine coordinates based on messenger status
             let coords: { lng: number; lat: number };
@@ -164,12 +174,23 @@ export const fetchMessengers = async () => {
                 };
             }
 
+            // Determine destination name based on shipment direction
+            let destination = friend.first_name ?? 'Unknown';
+            if (shipment) {
+                if (m.status === MessengerStatus.IN_TRANSIT && shipment.recipientId === dbUser.id) {
+                    destination = 'You';
+                } else if (m.status === MessengerStatus.RETURNING && shipment.senderId === dbUser.id) {
+                    destination = 'You';
+                }
+            }
+
             return {
                 id: m.id,
                 recipientId: friendId,
                 name: m.name,
                 status: mapStatus(m.status),
-                destination: friend.first_name ?? 'Unknown',
+                destination,
+                holderName,
                 progress: 0, // Calculated on frontend
                 color: '#fca5a5',
                 skinId: m.skinId,
