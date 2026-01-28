@@ -7,12 +7,16 @@ import { SidebarItem } from './SidebarItem';
 import { SignedIn, UserButton } from '@clerk/nextjs';
 import { useRouter, usePathname, useSearchParams, useParams } from 'next/navigation';
 import Link from 'next/link';
+import { FriendRequest } from '@/app/utils/fetch-friend-requests';
+import { FriendsModal } from '../friends/FriendsModal';
 
 interface SidebarProps {
     sortedChars: Character[];
+    incomingRequests: FriendRequest[];
+    outgoingRequests: FriendRequest[];
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ sortedChars }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ sortedChars, incomingRequests, outgoingRequests }) => {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -64,9 +68,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ sortedChars }) => {
                     ))}
 
                     {/* Add New Button */}
-                    <button className="w-full py-3 border-2 border-dashed border-[#6d5a43] text-[#6d5a43] font-pixel text-[8px] hover:bg-[#8b7355] hover:text-[#e0d5c1] transition-colors flex items-center justify-center gap-2 opacity-50 hover:opacity-100">
-                        <Plus size={12} /> HIRE NEW
-                    </button>
+                    <FriendsModal
+                        incomingRequests={incomingRequests}
+                        outgoingRequests={outgoingRequests}
+                        trigger={
+                            <button className="w-full py-3 border-2 border-dashed border-[#6d5a43] text-[#6d5a43] font-pixel text-[8px] hover:bg-[#8b7355] hover:text-[#e0d5c1] transition-colors flex items-center justify-center gap-2 opacity-50 hover:opacity-100 relative">
+                                <Plus size={12} /> HIRE NEW
+                                {incomingRequests.length > 0 && (
+                                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-[8px] flex items-center justify-center font-pixel">
+                                        {incomingRequests.length}
+                                    </span>
+                                )}
+                            </button>
+                        }
+                    />
                 </div>
             </div>
         </div>

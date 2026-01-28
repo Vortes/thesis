@@ -97,7 +97,8 @@ export default async function InvitePage({ params }: InvitePageProps) {
                 messenger: {
                     create: {
                         name: 'Messenger', // Default name
-                        skinId: 'default_messenger'
+                        skinId: 'default_messenger',
+                        currentHolderId: recipientUser.id // Recipient holds first
                     }
                 }
             }
