@@ -87,6 +87,10 @@ export const fetchMessengers = async () => {
                 holderName = friend.first_name ?? 'Friend';
             }
 
+            // Determine if user has seen the Hau reveal
+            const isInitiator = c.initiatorId === dbUser.id;
+            const revealed = isInitiator ? m.revealedToInitiator : m.revealedToRecipient;
+
             // Determine coordinates based on messenger status
             let coords: { lng: number; lat: number };
             let destCoords: { lng: number; lat: number } | undefined;
@@ -198,6 +202,8 @@ export const fetchMessengers = async () => {
                 destCoords,
                 originCoords,
                 canSend,
+                revealed,
+                friendName: friend.first_name ?? 'Friend',
                 shipmentData,
                 history: []
             } as Character;

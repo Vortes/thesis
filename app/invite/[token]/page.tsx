@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { getRandomHauCharacter } from '@/lib/hau-characters';
 
 interface InvitePageProps {
     params: Promise<{
@@ -88,6 +89,9 @@ export default async function InvitePage({ params }: InvitePageProps) {
     }
 
     // Create Connection and Update Invitation atomically
+    // Randomly assign a Hau character
+    const hau = getRandomHauCharacter();
+
     await prisma.$transaction(async tx => {
         await tx.connection.create({
             data: {
@@ -96,9 +100,11 @@ export default async function InvitePage({ params }: InvitePageProps) {
                 status: 'ACCEPTED',
                 messenger: {
                     create: {
-                        name: 'Messenger', // Default name
-                        skinId: 'default_messenger',
-                        currentHolderId: recipientUser.id // Recipient holds first
+                        name: hau.name,
+                        skinId: hau.id,
+                        currentHolderId: recipientUser.id, // Recipient holds first
+                        revealedToInitiator: false,
+                        revealedToRecipient: false
                     }
                 }
             }

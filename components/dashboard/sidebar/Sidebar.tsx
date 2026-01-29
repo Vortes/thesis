@@ -1,14 +1,15 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Globe, Plus } from 'lucide-react';
 import { Character } from '@/lib/dashboard-data';
 import { SidebarItem } from './SidebarItem';
-import { SignedIn, UserButton } from '@clerk/nextjs';
+import { SignedIn, UserButton, useUser } from '@clerk/nextjs';
 import { useRouter, usePathname, useSearchParams, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { FriendRequest } from '@/app/utils/fetch-friend-requests';
 import { FriendsModal } from '../friends/FriendsModal';
+import { HauRevealFlow } from '../hau-reveal/HauRevealFlow';
 
 interface SidebarProps {
     sortedChars: Character[];
@@ -21,6 +22,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ sortedChars, incomingRequests,
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const params = useParams();
+    const { user } = useUser();
+
+    const [revealingChar, setRevealingChar] = useState<Character | null>(null);
 
     const selectedCharId = (params.charId as string) || searchParams.get('charId');
 
@@ -63,6 +67,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ sortedChars, incomingRequests,
                             char={char}
                             isSelected={selectedCharId === String(char.id)}
                             onClick={() => handleCharClick(char.id)}
+                            onRevealClick={() => setRevealingChar(char)}
                         />
                     ))}
 
@@ -83,6 +88,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ sortedChars, incomingRequests,
                     />
                 </div>
             </div>
+
+            {/* Hau Reveal Modal */}
+            {revealingChar && (
+                <HauRevealFlow
+                    open={!!revealingChar}
+                    onOpenChange={open => !open && setRevealingChar(null)}
+                    messengerId={String(revealingChar.id)}
+                    hauSkinId={revealingChar.skinId || 'rizzo'}
+                    userName={user?.firstName || 'You'}
+                    friendName={revealingChar.friendName}
+                />
+            )}
         </div>
     );
 };

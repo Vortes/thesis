@@ -75,6 +75,10 @@ model Messenger {
   // This alternates between connection initiator/recipient
   currentHolderId String?
 
+  // Track if each user has seen the Hau reveal experience
+  revealedToInitiator Boolean @default(false)
+  revealedToRecipient Boolean @default(false)
+
   // Reverse relation for shipments this messenger has carried
   shipments Shipment[] @relation("ShipmentMessenger")
 }

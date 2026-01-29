@@ -15,6 +15,8 @@ export interface Character {
     destCoords?: { lng: number; lat: number }; // Destination coordinates (for En Route/Returning)
     originCoords?: { lng: number; lat: number }; // Origin coordinates (for En Route/Returning)
     canSend: boolean; // Whether current user can send with this messenger
+    revealed: boolean; // Whether user has seen the Hau reveal experience
+    friendName: string; // The friend's first name (for reveal flow)
     shipmentData?: {
         shipmentId: string;
         dispatchedAt: number; // Unix timestamp

@@ -3,6 +3,7 @@
 import { currentUser } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import { getRandomHauCharacter } from '@/lib/hau-characters';
 
 export type FriendRequestResult =
     | { success: true }
@@ -104,15 +105,20 @@ export async function acceptFriendRequest(connectionId: string): Promise<FriendR
 
     // Update connection to accepted and create messenger
     // Recipient (who accepts) holds the messenger first
+    // Randomly assign a Hau character
+    const hau = getRandomHauCharacter();
+
     await prisma.connection.update({
         where: { id: connectionId },
         data: {
             status: 'ACCEPTED',
             messenger: {
                 create: {
-                    name: 'Messenger',
-                    skinId: 'default_messenger',
-                    currentHolderId: dbUser.id // Recipient holds first
+                    name: hau.name,
+                    skinId: hau.id,
+                    currentHolderId: dbUser.id, // Recipient holds first
+                    revealedToInitiator: false,
+                    revealedToRecipient: false
                 }
             }
         }
