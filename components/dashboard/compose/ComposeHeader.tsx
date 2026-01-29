@@ -3,10 +3,10 @@ import { ChevronLeft, MapPin } from 'lucide-react';
 
 interface ComposeHeaderProps {
     onBack: () => void;
+    recipientName?: string;
 }
 
-export const ComposeHeader: React.FC<ComposeHeaderProps> = ({ onBack }) => {
-    console.log('re-rendering');
+export const ComposeHeader: React.FC<ComposeHeaderProps> = ({ onBack, recipientName }) => {
     return (
         <div className="flex justify-between items-center bg-[#5e4c35] p-3 pixel-border-sm text-[#e0d5c1]">
             <button
@@ -18,7 +18,9 @@ export const ComposeHeader: React.FC<ComposeHeaderProps> = ({ onBack }) => {
             </button>
             <div className="flex items-center gap-3">
                 <MapPin className="w-5 h-5" />
-                <span className="font-pixel text-xs md:text-sm tracking-widest uppercase">FROM: ME &rarr; TO:</span>
+                <span className="font-pixel text-xs md:text-sm tracking-widest uppercase flex items-center gap-2">
+                    FROM: ME <span className="font-sans text-lg leading-none">→</span> TO: {recipientName?.toUpperCase() || '???'}
+                </span>
             </div>
             <div className="w-10"></div> {/* Spacer for balance */}
         </div>

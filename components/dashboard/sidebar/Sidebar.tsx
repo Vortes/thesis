@@ -54,8 +54,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ sortedChars, incomingRequests,
             {/* Character Roster */}
             <div className="bg-[#a08560] p-2 pixel-border-sm flex-1 overflow-hidden flex flex-col">
                 <div className="font-pixel text-[8px] text-[#4a3b2a] mb-2 uppercase tracking-widest border-b border-[#8b7355] pb-1 flex justify-between items-center">
-                    <span>COURIERS</span>
-                    <span className="text-[6px] bg-[#4a3b2a] text-[#e0d5c1] px-1 rounded">SORT: STATUS</span>
+                    <span>Your Haus</span>
                 </div>
                 <div className="flex flex-col gap-2 pr-1 pt-2">
                     {sortedChars.map(char => (

@@ -148,7 +148,7 @@ export const Compose = ({ selectedChar }: ComposeProps) => {
             <div className="bg-[#8b7355] p-2 pixel-border pixel-corners h-full w-full">
                 <div className="bg-[#a08560] p-6 h-full flex flex-col gap-6 relative">
                     {/* Header */}
-                    <ComposeHeader onBack={() => router.back()} />
+                    <ComposeHeader onBack={() => router.back()} recipientName={selectedChar.destination} />
 
                     {view === 'compose' && (
                         <ComposeLetterWrapper

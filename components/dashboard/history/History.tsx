@@ -10,13 +10,21 @@ import { LetterDetailView } from './LetterDetailView';
 interface HistoryProps {
     selectedChar: Character | null;
     shipments?: (Shipment & { items: GiftItem[] })[];
+    currentUserId?: string;
 }
 
-export const History: React.FC<HistoryProps> = ({ selectedChar, shipments = [] }) => {
+export const History: React.FC<HistoryProps> = ({ selectedChar, shipments = [], currentUserId }) => {
     const router = useRouter();
     const [viewingShipment, setViewingShipment] = useState<(Shipment & { items: GiftItem[] }) | null>(null);
     const [letterContent, setLetterContent] = useState<string | null>(null);
     const [loadingLetter, setLoadingLetter] = useState(false);
+
+    // Check if user can view a shipment (recipients can't peek at IN_TRANSIT shipments)
+    const canViewShipment = (shipment: Shipment) => {
+        if (shipment.status !== 'IN_TRANSIT') return true;
+        // Only the sender can view IN_TRANSIT shipments
+        return shipment.senderId === currentUserId;
+    };
 
     // Fetch letter content when viewing a shipment
     useEffect(() => {
@@ -146,7 +154,8 @@ export const History: React.FC<HistoryProps> = ({ selectedChar, shipments = [] }
                                                         key={shipment.id}
                                                         shipment={shipment}
                                                         selectedChar={selectedChar}
-                                                        onClick={() => setViewingShipment(shipment)}
+                                                        onClick={() => canViewShipment(shipment) && setViewingShipment(shipment)}
+                                                        locked={!canViewShipment(shipment)}
                                                     />
                                                 ))}
                                             </div>

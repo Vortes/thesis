@@ -9,15 +9,15 @@ HauMail is a Next.js 16 application for sending virtual "gifts" between friends 
 ## Commands
 
 ```bash
-pnpm dev          # Start development server (localhost:3000)
-pnpm build        # Production build
-pnpm lint         # Run ESLint
+bun dev          # Start development server (localhost:3000)
+bun run build    # Production build
+bun run lint     # Run ESLint
 
 # Database
-pnpm prisma migrate dev --name <migration_name>  # Create and apply migration
-pnpm prisma db seed                              # Seed database
-pnpm prisma generate                             # Regenerate Prisma client
-pnpm prisma studio                               # Open Prisma Studio GUI
+bun prisma migrate dev --name <migration_name>  # Create and apply migration
+bun prisma db seed                              # Seed database
+bun prisma generate                             # Regenerate Prisma client
+bun prisma studio                               # Open Prisma Studio GUI
 ```
 
 ## Architecture
@@ -77,3 +77,55 @@ The UI follows a "Game Boy Color Desk" aesthetic with pixel art styling:
 - Fonts: `font-pixel` (Press Start 2P) for UI labels, `font-handheld` (VT323) for content
 - Colors: Wood tones (#8b7355, #a08560) for structure, paper white (#fdfbf7) for content areas
 - Animations should feel mechanical, not fluid (see `design_guideline.txt` for details)
+
+## Implementation Patterns
+
+For detailed patterns and code examples, see `AGENT.md`. Key patterns:
+
+### Feature Implementation Order
+1. **Schema** - Check `prisma/schema.prisma` for existing support
+2. **Server Actions** - `app/actions/<feature>.ts` for mutations
+3. **Data Fetching** - `app/utils/fetch-<feature>.ts` for reads
+4. **Loader** - Server component that fetches and passes to client
+5. **UI Components** - `components/dashboard/<feature>/`
+
+### Server Action Template
+```typescript
+'use server';
+import { currentUser } from '@clerk/nextjs/server';
+import { prisma } from '@/lib/prisma';
+import { revalidatePath } from 'next/cache';
+
+export type ActionResult = { success: true } | { success: false; error: string };
+
+export async function actionName(param: string): Promise<ActionResult> {
+    const user = await currentUser();
+    if (!user) return { success: false, error: 'Not authenticated' };
+
+    const dbUser = await prisma.user.findUnique({
+        where: { email: user.emailAddresses[0].emailAddress }
+    });
+    if (!dbUser) return { success: false, error: 'User not found' };
+
+    // Validate, mutate, revalidate
+    revalidatePath('/');
+    return { success: true };
+}
+```
+
+### Client Component Pattern
+- Use `useState` for loading/error states
+- Call server actions directly (no API routes needed)
+- Use `router.refresh()` after successful mutations to trigger re-fetch
+- Follow design system colors and fonts
+
+### Color Reference
+| Usage | Hex |
+|-------|-----|
+| Dark text/buttons | `#4a3b2a` |
+| Headers | `#5e4c35` |
+| Borders | `#8b7355` |
+| Secondary bg | `#a08560` |
+| Primary bg | `#c4a574` |
+| Light text | `#e0d5c1` |
+| Paper/inputs | `#fdfbf7` |

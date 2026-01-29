@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { Mic, Image as ImageIcon, PenTool } from 'lucide-react';
+import { Mic, Image as ImageIcon, PenTool, Lock } from 'lucide-react';
 import { Character } from '@/lib/dashboard-data';
 import { Shipment, GiftItem } from '@prisma/client';
 
@@ -8,9 +8,10 @@ interface ShipmentCardProps {
     shipment: Shipment & { items: GiftItem[] };
     selectedChar: Character;
     onClick: () => void;
+    locked?: boolean;
 }
 
-export const ShipmentCard: React.FC<ShipmentCardProps> = ({ shipment, selectedChar, onClick }) => {
+export const ShipmentCard: React.FC<ShipmentCardProps> = ({ shipment, selectedChar, onClick, locked = false }) => {
     const formatDate = (date: Date) => {
         return new Date(date).toLocaleDateString('en-US', {
             month: 'short',
@@ -20,8 +21,12 @@ export const ShipmentCard: React.FC<ShipmentCardProps> = ({ shipment, selectedCh
 
     return (
         <div
-            onClick={onClick}
-            className="bg-[#fdfbf7] p-4 pixel-border-sm relative group cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-all"
+            onClick={locked ? undefined : onClick}
+            className={`bg-[#fdfbf7] p-4 pixel-border-sm relative group transition-all ${
+                locked
+                    ? 'opacity-75 cursor-not-allowed'
+                    : 'cursor-pointer hover:-translate-y-1 hover:shadow-lg'
+            }`}
         >
             {/* Folder Tab Look */}
             <div className="absolute -top-2 left-0 w-24 h-4 bg-[#fdfbf7] border-t-2 border-l-2 border-r-2 border-[#8b7355] rounded-t-lg z-0" />
@@ -44,9 +49,16 @@ export const ShipmentCard: React.FC<ShipmentCardProps> = ({ shipment, selectedCh
                     {shipment.items.some(i => i.type === 'AUDIO') && <Mic size={16} className="text-gray-400" />}
                     {shipment.items.some(i => i.type === 'PHOTO') && <ImageIcon size={16} className="text-gray-400" />}
                     {shipment.items.some(i => i.type === 'TEXT') && <PenTool size={16} className="text-gray-400" />}
-                    <div className="bg-[#a3e635] px-3 py-1 font-pixel text-[8px] pixel-border-sm hover:bg-[#86efac]">
-                        OPEN
-                    </div>
+                    {locked ? (
+                        <div className="bg-[#8b7355] px-3 py-1 font-pixel text-[8px] pixel-border-sm text-[#e0d5c1] flex items-center gap-1">
+                            <Lock size={10} />
+                            EN ROUTE
+                        </div>
+                    ) : (
+                        <div className="bg-[#a3e635] px-3 py-1 font-pixel text-[8px] pixel-border-sm hover:bg-[#86efac]">
+                            OPEN
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
